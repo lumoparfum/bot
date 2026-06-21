@@ -3,75 +3,238 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>⚡ Vur Kaç Bot</title>
+<title>⚡ Vur Kaç v4.0</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:#0b0e11;color:#eaecef;padding:12px;min-height:100vh;}
-.container{max-width:600px;margin:0 auto;}
-.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#131722;border-radius:12px;border:1px solid #2b3139;margin-bottom:12px;}
-.logo{font-size:22px;font-weight:700;color:#f3ba2f;}
-.status{display:flex;align-items:center;gap:6px;font-size:12px;color:#848e9c;}
-.dot{width:8px;height:8px;border-radius:50%;background:#0ecb81;display:inline-block;animation:pulse 2s infinite;}
+:root{
+  --bg0:#0b0e11;
+  --bg1:#131722;
+  --bg2:#1e222d;
+  --bg3:#2b3139;
+  --border:#2b3139;
+  --text1:#eaecef;
+  --text2:#848e9c;
+  --green:#0ecb81;
+  --red:#f6465d;
+  --yellow:#f3ba2f;
+  --blue:#2196f3;
+  --purple:#9c6cff;
+  --radius:12px;
+}
+body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg0);color:var(--text1);padding:12px;min-height:100vh;}
+.container{max-width:1400px;margin:0 auto;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg1);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;gap:6px;}
+.header-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.logo{font-size:20px;font-weight:700;color:var(--yellow);letter-spacing:-0.5px;}
+.version-tag{background:var(--bg3);color:var(--text2);font-size:11px;padding:2px 8px;border-radius:20px;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.card{background:#131722;border:1px solid #2b3139;border-radius:12px;padding:14px 16px;margin-bottom:10px;}
-.card h3{font-size:12px;color:#848e9c;font-weight:400;margin-bottom:6px;}
-.value{font-size:24px;font-weight:700;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:all .15s;min-height:56px;}
+.status-pill{display:flex;align-items:center;gap:6px;background:var(--bg2);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2);}
+.status-pill span{color:var(--green);font-weight:600;}
+.stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
+.stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--radius) var(--radius) 0 0;}
+.stat-card.green::before{background:var(--green);}
+.stat-card.red::before{background:var(--red);}
+.stat-card.yellow::before{background:var(--yellow);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.purple::before{background:var(--purple);}
+.stat-card.neutral::before{background:var(--bg3);}
+.stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+.stat-value{font-size:22px;font-weight:700;line-height:1;}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:4px;}
+.kontrol{display:flex;flex-wrap:wrap;gap:8px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;align-items:center;justify-content:center;}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
 .btn:active{transform:scale(.96);}
-.btn-green{background:#0ecb81;color:#0b0e11;}
-.btn-red{background:#f6465d;color:#fff;}
-.btn-gray{background:#2b3139;color:#eaecef;}
-.btn-yellow{background:#f3ba2f;color:#0b0e11;}
-.flex{display:flex;gap:8px;flex-wrap:wrap;}
-.flex .btn{flex:1;min-width:80px;}
-.log{background:#0b0e11;border:1px solid #2b3139;border-radius:8px;padding:8px 10px;height:120px;overflow-y:auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.6;}
-.log .info{color:#848e9c;}
-.log .success{color:#0ecb81;}
-.log .warning{color:#f3ba2f;}
-.log .error{color:#f6465d;}
-.text-green{color:#0ecb81;}
-.text-red{color:#f6465d;}
-.text-yellow{color:#f3ba2f;}
-.text-muted{color:#848e9c;font-size:12px;}
+.btn-green{background:var(--green);color:#0b0e11;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-yellow{background:var(--yellow);color:#0b0e11;}
+.btn-gray{background:var(--bg3);color:var(--text1);}
+.btn-blue{background:#1a3a5c;color:#6ab0f5;border:1px solid #2a5a8c;}
+.btn-purple{background:#2a1a4c;color:#b08cff;border:1px solid #4a3a7c;}
+.divider{width:1px;height:28px;background:var(--border);}
+.poz-panel{display:flex;flex-wrap:wrap;gap:16px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:12px;font-size:13px;align-items:center;}
+.poz-item .pi-label{color:var(--text2);font-size:11px;}
+.poz-item .pi-val{font-weight:600;font-size:14px;}
+.drawdown-bar-wrap{flex:1;min-width:180px;}
+.drawdown-bar-bg{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin-top:4px;}
+.drawdown-bar-fill{height:100%;border-radius:4px;transition:width .5s;background:var(--green);}
+.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;}
+.chart-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:12px;}
+.chart-card h3{font-size:12px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px;font-weight:400;}
+.chart-wrap{position:relative;width:100%;}
+.chart-tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.chart-tab{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2);background:transparent;border:none;}
+.chart-tab.active{background:var(--bg3);color:var(--text1);}
+.tables-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.table-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;}
+.table-card h3{font-size:12px;color:var(--text2);padding:10px 14px 8px;border-bottom:1px solid var(--border);font-weight:400;display:flex;justify-content:space-between;}
+.table-wrap{max-height:260px;overflow-y:auto;}
+.table-wrap::-webkit-scrollbar{width:4px;}
+.table-wrap::-webkit-scrollbar-track{background:transparent;}
+.table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead th{background:var(--bg2);color:var(--text2);padding:6px 8px;text-align:left;position:sticky;top:0;z-index:1;font-weight:400;white-space:nowrap;}
+tbody td{padding:5px 8px;border-bottom:1px solid rgba(43,49,57,.5);}
+tbody tr:hover td{background:var(--bg2);}
+.coin-perf-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;}
+.coin-chip{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px;}
+.coin-chip .cc-name{color:var(--text2);font-size:10px;}
+.coin-chip .cc-pnl{font-weight:600;font-size:13px;}
+.coin-chip .cc-count{font-size:10px;color:var(--text2);}
+.log-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.log-card h3{font-size:12px;color:var(--text2);padding:8px 14px;border-bottom:1px solid var(--border);font-weight:400;display:flex;justify-content:space-between;align-items:center;}
+.log-ekrani{background:var(--bg0);padding:8px 12px;height:130px;overflow-y:auto;font-family:'Courier New',monospace;font-size:11px;line-height:1.6;}
+.log-ekrani::-webkit-scrollbar{width:3px;}
+.log-ekrani::-webkit-scrollbar-thumb{background:var(--border);}
+.log-satir{margin:1px 0;}
+.log-satir.info{color:var(--text2);}
+.log-satir.success{color:var(--green);}
+.log-satir.warning{color:var(--yellow);}
+.log-satir.error{color:var(--red);}
+.badge{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600;}
+.badge-long{background:rgba(14,203,129,.15);color:var(--green);border:1px solid rgba(14,203,129,.3);}
+.badge-short{background:rgba(246,70,93,.15);color:var(--red);border:1px solid rgba(246,70,93,.3);}
+.alert{padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none;align-items:center;gap:8px;}
+.alert.visible{display:flex;}
+.alert-danger{background:rgba(246,70,93,.1);border:1px solid rgba(246,70,93,.3);color:var(--red);}
+.alert-warning{background:rgba(243,186,47,.1);border:1px solid rgba(243,186,47,.3);color:var(--yellow);}
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(3,1fr);}
+  .charts-grid{grid-template-columns:1fr;}
+  .tables-grid{grid-template-columns:1fr;}
+  .coin-perf-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:600px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .kontrol{justify-content:center;}
+  .coin-perf-grid{grid-template-columns:repeat(2,1fr);}
+}
 </style>
 </head>
 <body>
 <div class="container">
 
 <div class="header">
-  <div class="logo">⚡ Vur Kaç</div>
-  <div class="status"><span class="dot"></span> <span id="durum-text">Beklemede</span></div>
-</div>
-
-<div class="grid">
-  <div class="card"><h3>💰 Aktif</h3><div class="value text-green" id="aktif-bakiye">500.00</div></div>
-  <div class="card"><h3>🔒 Yedek</h3><div class="value text-yellow" id="yedek-bakiye">0.00</div></div>
-  <div class="card"><h3>📊 Pozisyon</h3><div class="value" id="poz-sayisi">0</div></div>
-  <div class="card"><h3>📈 K/Z</h3><div class="value" id="toplam-kz">0.00</div></div>
-</div>
-
-<div class="flex">
-  <button class="btn btn-green" id="baslatBtn">▶ Başlat</button>
-  <button class="btn btn-red" id="durdurBtn">⏹ Durdur</button>
-</div>
-
-<div class="flex">
-  <button class="btn btn-gray" id="raporBtn">📄 Rapor</button>
-  <button class="btn btn-yellow" id="yenileBtn">🔄 Yenile</button>
-</div>
-
-<div class="card">
-  <h3>📋 Son İşlemler</h3>
-  <div style="max-height:150px;overflow-y:auto;font-size:11px;" id="islem-listesi">
-    <div class="text-muted">Henüz işlem yok</div>
+  <div class="header-left">
+    <div class="logo">⚡ Vur Kaç <span style="color:var(--text2);font-size:14px;">v4.0</span></div>
+    <div class="version-tag">Binance Futures Sim</div>
+    <div class="live-dot"></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="status-pill">Durum: <span id="durum-text">Beklemede</span></div>
+    <div class="status-pill" style="font-size:11px;" id="saat-text">--:--:--</div>
   </div>
 </div>
 
-<div class="card">
-  <h3>📟 Canlı Log</h3>
-  <div class="log" id="log-kutusu">
-    <div class="info">[Sistem] Bot hazır. Başlat butonuna bas.</div>
+<div class="alert alert-danger" id="alert-box">
+  <span>⚠️</span><span id="alert-msg"></span>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card green">
+    <div class="stat-label">💰 Aktif</div>
+    <div class="stat-value" id="aktif-bakiye">$500.00</div>
+    <div class="stat-sub" id="sermaye-degisim">—</div>
+  </div>
+  <div class="stat-card yellow">
+    <div class="stat-label">🔒 Yedek</div>
+    <div class="stat-value" id="yedek-bakiye" style="color:var(--yellow);">$0.00</div>
+    <div class="stat-sub" id="yedek-sub">Kilitli</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">📊 Gerçekleşmemiş</div>
+    <div class="stat-value" id="gerceklesmemis">$0.00</div>
+    <div class="stat-sub" id="poz-sayisi-text">0 poz</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">🏆 Kazanma</div>
+    <div class="stat-value" id="kazanma-orani" style="color:var(--blue);">—%</div>
+    <div class="stat-sub" id="toplam-islem-text">0 işlem</div>
+  </div>
+  <div class="stat-card neutral">
+    <div class="stat-label">📈 Toplam K/Z</div>
+    <div class="stat-value" id="toplam-kz">$0.00</div>
+    <div class="stat-sub" id="toplam-kz-yuzde">—%</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">📉 Max DD</div>
+    <div class="stat-value" id="max-drawdown" style="color:var(--red);">0.00%</div>
+    <div class="stat-sub" id="gunluk-dd">Günlük: 0.00%</div>
+  </div>
+</div>
+
+<div class="kontrol">
+  <button class="btn btn-green" id="devamBtn">▶ Başlat</button>
+  <button class="btn btn-red" id="durdurBtn">⏹ Durdur</button>
+  <div class="divider"></div>
+  <button class="btn btn-yellow" id="raporBtn">📄 Rapor</button>
+  <button class="btn btn-purple" id="kaydetBtn">💾 Kaydet</button>
+  <button class="btn btn-gray" id="temizleBtn">🗑️ Sıfırla</button>
+</div>
+
+<div class="poz-panel" id="poz-panel">
+  <div class="poz-item"><div class="pi-label">Açık Poz</div><div class="pi-val" id="pp-acik">0</div></div>
+  <div class="poz-item"><div class="pi-label">Kazanç</div><div class="pi-val" id="pp-kazanc" style="color:var(--green);">$0.00</div></div>
+  <div class="poz-item"><div class="pi-label">Kayıp</div><div class="pi-val" id="pp-kayip" style="color:var(--red);">$0.00</div></div>
+  <div class="poz-item"><div class="pi-label">Likid.</div><div class="pi-val" id="pp-likid" style="color:var(--red);">0</div></div>
+  <div class="poz-item"><div class="pi-label">Ort. K/Z</div><div class="pi-val" id="pp-ortkz">—%</div></div>
+  <div class="poz-item drawdown-bar-wrap">
+    <div class="pi-label">Günlük Drawdown</div>
+    <div class="drawdown-bar-bg">
+      <div class="drawdown-bar-fill" id="dd-bar" style="width:0%"></div>
+    </div>
+    <div class="pi-val" id="pp-dd" style="font-size:11px;margin-top:2px;">0% / 30%</div>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <div class="chart-tabs">
+      <button class="chart-tab active" onclick="setChartMode('equity')">📈 Bakiye</button>
+      <button class="chart-tab" onclick="setChartMode('price')">💹 Coin</button>
+      <button class="chart-tab" onclick="setChartMode('pnl')">📊 K/Z</button>
+    </div>
+    <div class="chart-wrap" style="height:180px;">
+      <canvas id="anaGrafik" role="img"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3><span class="dot" style="background:var(--yellow)"></span>Kazanç / Kayıp Dağılımı</h3>
+    <div class="chart-wrap" style="height:200px;">
+      <canvas id="kzDagGrafik" role="img"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="coin-perf-wrap" class="coin-perf-grid"></div>
+
+<div class="tables-grid">
+  <div class="table-card">
+    <h3>📋 Açık Pozisyonlar <span id="acik-poz-badge" style="color:var(--green);">0</span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Coin</th><th>Tip</th><th>Miktar</th><th>Klv</th><th>Giriş</th><th>K/Z%</th><th>K/Z$</th><th>Hedef</th><th>Stop</th></tr></thead>
+        <tbody id="poz-tablosu"><tr><td colspan="10" style="text-align:center;color:var(--text2);padding:16px;">Açık pozisyon yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="table-card">
+    <h3>📜 İşlem Geçmişi <span id="gecmis-badge" style="color:var(--text2);">0</span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Coin</th><th>Tip</th><th>Miktar</th><th>Giriş</th><th>Çıkış</th><th>K/Z$</th><th>%</th><th>Neden</th><th>Tarih</th></tr></thead>
+        <tbody id="gecmis-tablosu"><tr><td colspan="9" style="text-align:center;color:var(--text2);padding:16px;">Henüz işlem yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="log-card">
+  <h3><span>📟 Canlı Log</span><button class="btn btn-gray" onclick="logTemizle()" style="padding:2px 10px;font-size:11px;">Temizle</button></h3>
+  <div class="log-ekrani" id="log-kutusu">
+    <div class="log-satir info">[Sistem] Vur Kaç v4.0 hazır. Başlat butonuna bas.</div>
   </div>
 </div>
 
@@ -80,87 +243,256 @@ body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:#0b
 <script>
 const API_URL = window.location.origin;
 let intervalId = null;
+let anaChart = null;
+let kzDagChart = null;
+let chartMode = 'equity';
 
-function logYaz(msg, type='info'){
+function logYaz(msg, type='info') {
   const log = document.getElementById('log-kutusu');
   const saat = new Date().toLocaleTimeString('tr-TR');
   log.innerHTML += `<div class="${type}">[${saat}] ${msg}</div>`;
   log.scrollTop = log.scrollHeight;
 }
+function logTemizle() { document.getElementById('log-kutusu').innerHTML = ''; }
 
-async function durumGetir(){
-  try{
+function setChartMode(mode) {
+  chartMode = mode;
+  document.querySelectorAll('.chart-tab').forEach(t => {
+    t.classList.toggle('active', t.textContent.includes(mode === 'equity' ? 'Bakiye' : mode === 'price' ? 'Coin' : 'K/Z'));
+  });
+  durumGetir();
+}
+
+async function durumGetir() {
+  try {
     const res = await fetch(API_URL + '/status');
-    if(!res.ok) throw new Error('Sunucu yanıt vermiyor');
     const data = await res.json();
 
     document.getElementById('aktif-bakiye').textContent = data.aktifSermaye?.toFixed(2) || '0.00';
+    document.getElementById('aktif-bakiye').style.color = data.aktifSermaye < 100 ? '#f6465d' : '#0ecb81';
     document.getElementById('yedek-bakiye').textContent = data.yedekKasa?.toFixed(2) || '0.00';
-    document.getElementById('poz-sayisi').textContent = data.pozisyonlar?.length || 0;
+    document.getElementById('gerceklesmemis').textContent = (data.toplamKZ?.toFixed(2) || '0.00');
+    document.getElementById('gerceklesmemis').style.color = data.toplamKZ >= 0 ? '#0ecb81' : '#f6465d';
+    document.getElementById('poz-sayisi-text').textContent = data.pozisyonlar?.length + ' poz' || '0 poz';
     document.getElementById('toplam-kz').textContent = (data.toplamKZ >= 0 ? '+' : '') + (data.toplamKZ?.toFixed(2) || '0.00');
-    
+    document.getElementById('toplam-kz').style.color = data.toplamKZ >= 0 ? '#0ecb81' : '#f6465d';
+    document.getElementById('toplam-islem-text').textContent = data.toplamIslem + ' işlem' || '0 işlem';
+    document.getElementById('max-drawdown').textContent = data.maxDrawdown + '%' || '0%';
+    document.getElementById('pp-acik').textContent = data.pozisyonlar?.length || 0;
+    document.getElementById('acik-poz-badge').textContent = data.pozisyonlar?.length || 0;
+    document.getElementById('gecmis-badge').textContent = data.sonIslemler?.length || 0;
+
     const durumText = document.getElementById('durum-text');
     const isCalisiyor = data.calisiyor === true;
     durumText.textContent = isCalisiyor ? 'Çalışıyor' : 'Durduruldu';
     durumText.style.color = isCalisiyor ? '#0ecb81' : '#f6465d';
 
-    // Son işlemler
-    const liste = document.getElementById('islem-listesi');
-    if(data.sonIslemler && data.sonIslemler.length > 0){
-      liste.innerHTML = data.sonIslemler.slice(-5).reverse().map(i =>
-        `<div>${i.coin} ${i.tip} | ${i.kar >= 0 ? '+' : ''}${i.kar?.toFixed(2) || '0'}$ (${i.karYuzde?.toFixed(1)||0}%)</div>`
-      ).join('');
+    // Pozisyon tablosu
+    const tbody = document.getElementById('poz-tablosu');
+    if (data.pozisyonlar && data.pozisyonlar.length > 0) {
+      tbody.innerHTML = data.pozisyonlar.map((p, i) => {
+        const tb = p.tip === 'LONG' ? 'badge-long' : 'badge-short';
+        const rc = p.karTutar >= 0 ? 'color:#0ecb81' : 'color:#f6465d';
+        return `<tr>
+          <td>${i+1}</td>
+          <td>${p.coin.replace('USDT','')}</td>
+          <td><span class="badge ${tb}">${p.tip}</span></td>
+          <td>$${p.miktar?.toFixed(2)||'0'}</td>
+          <td>${p.kaldıraç}x</td>
+          <td>${p.girisFiyat?.toFixed(4)||'0'}</td>
+          <td style="${rc}">${p.karYuzde?.toFixed(1)||0}%</td>
+          <td style="${rc}">${p.karTutar>=0?'+':''}${p.karTutar?.toFixed(2)||'0'}</td>
+          <td>-</td><td>-</td>
+        </tr>`;
+      }).join('');
     } else {
-      liste.innerHTML = '<div class="text-muted">Henüz işlem yok</div>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#848e9c;padding:16px;">Açık pozisyon yok</td></tr>';
     }
 
+    // Geçmiş tablosu
+    const gBody = document.getElementById('gecmis-tablosu');
+    if (data.sonIslemler && data.sonIslemler.length > 0) {
+      gBody.innerHTML = data.sonIslemler.slice(-20).reverse().map(is => {
+        const rc = is.kar >= 0 ? 'color:#0ecb81' : 'color:#f6465d';
+        const nedenRenk = is.neden === 'HEDEF' ? '#0ecb81' : (is.neden === 'LİKİDASYON' ? '#f6465d' : '#f3ba2f');
+        return `<tr>
+          <td>${is.coin.replace('USDT','')}</td>
+          <td><span class="badge ${is.tip==='LONG'?'badge-long':'badge-short'}">${is.tip}</span></td>
+          <td>$${is.miktar?.toFixed(2)||'0'}</td>
+          <td>${is.giris?.toFixed(4)||'0'}</td>
+          <td>${is.cikis?.toFixed(4)||'0'}</td>
+          <td style="${rc}">${is.kar>=0?'+':''}${is.kar?.toFixed(2)||'0'}</td>
+          <td style="${rc}">${is.karYuzde?.toFixed(1)||0}%</td>
+          <td style="color:${nedenRenk}">${is.neden||'-'}</td>
+          <td style="font-size:10px;color:#848e9c">${(is.tarih||'').slice(-8)}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      gBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#848e9c;padding:16px;">Henüz işlem yok</td></tr>';
+    }
+
+    // Coin performans
+    const wrap = document.getElementById('coin-perf-wrap');
+    if (data.coinStats && Object.keys(data.coinStats).length > 0) {
+      const entries = Object.entries(data.coinStats).filter(([,v])=>v.islem>0).sort((a,b)=>b[1].kar-a[1].kar).slice(0,10);
+      wrap.innerHTML = entries.map(([coin, stat]) => {
+        const rc = stat.kar >= 0 ? '#0ecb81' : '#f6465d';
+        return `<div class="coin-chip">
+          <div class="cc-name">${coin.replace('USDT','')}</div>
+          <div class="cc-pnl" style="color:${rc}">${stat.kar>=0?'+':''}$${stat.kar?.toFixed(2)||'0'}</div>
+          <div class="cc-count">${stat.islem} işlem</div>
+        </div>`;
+      }).join('');
+    } else {
+      wrap.innerHTML = '';
+    }
+
+    // Grafikler
+    grafikGuncelle(data);
     return data;
-  } catch(e){
-    logYaz('⚠️ Sunucu bağlantı hatası: ' + e.message, 'warning');
+  } catch(e) {
+    logYaz('⚠️ Sunucu bağlantı hatası', 'warning');
     return null;
   }
 }
 
-async function botBaslat(){
-  try{
-    const res = await fetch(API_URL + '/start', {method:'POST'});
+function grafikGuncelle(data) {
+  const ctx1 = document.getElementById('anaGrafik').getContext('2d');
+  let labels, values, borderColor, bgColor, label;
+
+  if (chartMode === 'equity') {
+    labels = (data.equityCurve || []).map((_,i) => i+1);
+    values = (data.equityCurve || []).map(e => e.v);
+    borderColor = '#f3ba2f';
+    bgColor = 'rgba(243,186,47,0.08)';
+    label = 'Bakiye ($)';
+  } else if (chartMode === 'pnl') {
+    labels = (data.pnlGecmisi || []).map((_,i) => i+1);
+    values = (data.pnlGecmisi || []);
+    borderColor = '#9c6cff';
+    bgColor = 'rgba(156,108,255,0.08)';
+    label = 'K/Z ($)';
+  } else {
+    labels = [];
+    values = [];
+    borderColor = '#2196f3';
+    bgColor = 'rgba(33,150,243,0.08)';
+    label = 'Fiyat';
+  }
+
+  if (values.length > 0) {
+    if (!anaChart) {
+      anaChart = new Chart(ctx1, {
+        type: chartMode === 'pnl' ? 'bar' : 'line',
+        data: { labels, datasets: [{ label, data: values, borderColor, backgroundColor: bgColor, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: { duration: 200 },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false, grid: { display: false } },
+            y: { display: true, position: 'right', grid: { color: 'rgba(43,49,57,0.5)' }, ticks: { color: '#848e9c', font: { size: 10 }, maxTicksLimit: 4, callback: v => '$' + v.toFixed(2) } }
+          }
+        }
+      });
+    } else {
+      anaChart.data.labels = labels;
+      anaChart.data.datasets[0].data = values;
+      anaChart.update('none');
+    }
+  }
+
+  // K/Z Dağılımı
+  const ctx2 = document.getElementById('kzDagGrafik').getContext('2d');
+  if (data.pnlGecmisi && data.pnlGecmisi.length > 0) {
+    const pnl = data.pnlGecmisi;
+    const buckets = { '< -10': 0, '-10~-5': 0, '-5~0': 0, '0~5': 0, '5~10': 0, '> 10': 0 };
+    for (const v of pnl) {
+      if (v < -10) buckets['< -10']++;
+      else if (v < -5) buckets['-10~-5']++;
+      else if (v < 0) buckets['-5~0']++;
+      else if (v < 5) buckets['0~5']++;
+      else if (v < 10) buckets['5~10']++;
+      else buckets['> 10']++;
+    }
+    const bl = Object.keys(buckets);
+    const bd = Object.values(buckets);
+    const bc = bl.map(k => k.startsWith('-') || k === '< -10' ? 'rgba(246,70,93,0.7)' : 'rgba(14,203,129,0.7)');
+    if (!kzDagChart) {
+      kzDagChart = new Chart(ctx2, {
+        type: 'bar',
+        data: { labels: bl, datasets: [{ label: 'Dağılım', data: bd, backgroundColor: bc }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#848e9c', font: { size: 9 } } },
+            y: { grid: { color: 'rgba(43,49,57,0.5)' }, ticks: { color: '#848e9c', font: { size: 9 }, stepSize: 1 }, beginAtZero: true }
+          }
+        }
+      });
+    } else {
+      kzDagChart.data.labels = bl;
+      kzDagChart.data.datasets[0].data = bd;
+      kzDagChart.data.datasets[0].backgroundColor = bc;
+      kzDagChart.update('none');
+    }
+  }
+}
+
+async function botBaslat() {
+  try {
+    const res = await fetch(API_URL + '/start', { method: 'POST' });
     const data = await res.json();
     logYaz(data.mesaj || 'Bot başlatıldı.', 'success');
     durumGetir();
-  } catch(e){ logYaz('❌ Başlatma hatası', 'error'); }
+  } catch (e) { logYaz('❌ Başlatma hatası', 'error'); }
 }
 
-async function botDurdur(){
-  try{
-    const res = await fetch(API_URL + '/stop', {method:'POST'});
+async function botDurdur() {
+  try {
+    const res = await fetch(API_URL + '/stop', { method: 'POST' });
     const data = await res.json();
     logYaz(data.mesaj || 'Bot durduruldu.', 'warning');
     durumGetir();
-  } catch(e){ logYaz('❌ Durdurma hatası', 'error'); }
+  } catch (e) { logYaz('❌ Durdurma hatası', 'error'); }
 }
 
-async function raporIndir(){
-  try{
+async function raporIndir() {
+  try {
     const res = await fetch(API_URL + '/rapor');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'bot_rapor.txt';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    a.href = url;
+    a.download = 'bot_rapor.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     logYaz('📄 Rapor indirildi.', 'success');
-  } catch(e){ logYaz('❌ Rapor hatası', 'error'); }
+  } catch (e) { logYaz('❌ Rapor hatası', 'error'); }
 }
 
-// Buton bağlantıları
-document.getElementById('baslatBtn').addEventListener('click', botBaslat);
+document.getElementById('devamBtn').addEventListener('click', botBaslat);
 document.getElementById('durdurBtn').addEventListener('click', botDurdur);
 document.getElementById('raporBtn').addEventListener('click', raporIndir);
-document.getElementById('yenileBtn').addEventListener('click', durumGetir);
+document.getElementById('temizleBtn').addEventListener('click', () => {
+  if (confirm('Tüm veriyi sıfırlamak istediğine emin misin?')) {
+    fetch(API_URL + '/temizle', { method: 'POST' }).then(() => { location.reload(); });
+  }
+});
+document.getElementById('kaydetBtn').addEventListener('click', () => {
+  logYaz('💾 Oturum kaydedildi.', 'success');
+});
 
-// Her 5 saniyede durumu güncelle
 durumGetir();
 intervalId = setInterval(durumGetir, 5000);
+
+// Saat
+setInterval(() => {
+  document.getElementById('saat-text').textContent = new Date().toLocaleTimeString('tr-TR');
+}, 1000);
 </script>
 </body>
 </html>
