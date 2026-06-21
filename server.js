@@ -79,24 +79,34 @@ const COIN_LIST = [
 // ============================================================
 async function tumFiyatlariGetir() {
   try {
-    const res = await axios.get('https://api.binance.com/api/v3/ticker/price');
+    console.log('📡 Fiyatlar çekiliyor...');
+    const res = await axios.get('https://api.binance.com/api/v3/ticker/price', { timeout: 5000 });
     const fiyatlar = {};
     for (const item of res.data) {
       if (COIN_LIST.includes(item.symbol)) fiyatlar[item.symbol] = parseFloat(item.price);
     }
+    console.log(`✅ ${Object.keys(fiyatlar).length} coin fiyatı alındı.`);
     return fiyatlar;
-  } catch { return null; }
+  } catch (e) {
+    console.error('❌ Fiyat çekme hatası:', e.message);
+    return null;
+  }
 }
 
 async function tumPerformanslariGetir() {
   try {
-    const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
+    console.log('📡 Performans verileri çekiliyor...');
+    const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 5000 });
     const perf = {};
     for (const item of res.data) {
       if (COIN_LIST.includes(item.symbol)) perf[item.symbol] = parseFloat(item.priceChangePercent);
     }
+    console.log(`✅ ${Object.keys(perf).length} coin performansı alındı.`);
     return perf;
-  } catch { return null; }
+  } catch (e) {
+    console.error('❌ Performans çekme hatası:', e.message);
+    return null;
+  }
 }
 
 // ============================================================
@@ -128,22 +138,23 @@ function toplamDD() {
 // YENİ POZİSYON AÇ
 // ============================================================
 async function yeniPozisyonAc() {
-  if (!state.botCalisiyor) return null;
-  if (state.aktifSermaye < MIN_SERMAYE) return null;
-  if (state.pozisyonlar.length >= MAX_POZISYON) return null;
-  if (gunlukDD() >= DD_LIMIT) return null;
+  console.log('🔄 Yeni pozisyon deneniyor...');
+  if (!state.botCalisiyor) { console.log('⏸ Bot çalışmıyor.'); return null; }
+  if (state.aktifSermaye < MIN_SERMAYE) { console.log('⚠️ Sermaye yetersiz.'); return null; }
+  if (state.pozisyonlar.length >= MAX_POZISYON) { console.log('⚠️ Maksimum pozisyon dolu.'); return null; }
+  if (gunlukDD() >= DD_LIMIT) { console.log('⚠️ Drawdown limiti aşıldı.'); return null; }
 
   const toplam = toplamMiktarHesapla();
-  if (state.aktifSermaye - toplam < MIN_SERMAYE) return null;
-  if (toplamRiskHesapla() > state.aktifSermaye * 0.40) return null;
+  if (state.aktifSermaye - toplam < MIN_SERMAYE) { console.log('⚠️ Kasa 20$ altında.'); return null; }
+  if (toplamRiskHesapla() > state.aktifSermaye * 0.40) { console.log('⚠️ Risk limiti aşıldı.'); return null; }
 
   const perf = await tumPerformanslariGetir();
-  if (!perf) return null;
+  if (!perf) { console.log('❌ Performans verisi alınamadı.'); return null; }
   const uygun = COIN_LIST.filter(c => perf[c] !== undefined);
-  if (uygun.length === 0) return null;
+  if (uygun.length === 0) { console.log('❌ Uygun coin bulunamadı.'); return null; }
 
   const uygunFiltre = uygun.filter(c => coinSayisi(c) < AYNI_COIN_MAX);
-  if (uygunFiltre.length === 0) return null;
+  if (uygunFiltre.length === 0) { console.log('⚠️ Tüm coinlerde max işlem limiti dolu.'); return null; }
 
   const sorted = [...uygunFiltre].sort((a, b) => perf[a] - perf[b]);
   const dip = sorted.slice(0, Math.min(6, sorted.length));
@@ -159,12 +170,12 @@ async function yeniPozisyonAc() {
   let tip = (degisim < -0.3) ? 'LONG' : (degisim > 0.3) ? 'SHORT' : (Math.random() < 0.5 ? 'LONG' : 'SHORT');
 
   const available = state.aktifSermaye - toplam;
-  if (available < MIN_ISLEM) return null;
+  if (available < MIN_ISLEM) { console.log('⚠️ Miktar yetersiz.'); return null; }
   let maxMiktar = Math.min(MAX_ISLEM, available);
-  if (maxMiktar < MIN_ISLEM) return null;
+  if (maxMiktar < MIN_ISLEM) { console.log('⚠️ Miktar yetersiz.'); return null; }
   let miktar = MIN_ISLEM + Math.random() * (maxMiktar - MIN_ISLEM);
   miktar = Math.max(MIN_ISLEM, Math.min(miktar, MAX_ISLEM, available));
-  if (miktar < MIN_ISLEM) return null;
+  if (miktar < MIN_ISLEM) { console.log('⚠️ Miktar yetersiz.'); return null; }
 
   const vol = Math.abs(degisim);
   let kaldıraç = (vol < 0.5) ? 3 + Math.floor(Math.random() * 2) : (vol < 1.5) ? 4 + Math.floor(Math.random() * 3) : 5 + Math.floor(Math.random() * 3);
@@ -177,7 +188,7 @@ async function yeniPozisyonAc() {
   hedefYuzde = Math.max(hedefYuzde, stopYuzde * 1.5);
 
   const fiyatlar = await tumFiyatlariGetir();
-  if (!fiyatlar || !fiyatlar[secilenCoin]) return null;
+  if (!fiyatlar || !fiyatlar[secilenCoin]) { console.log('❌ Fiyat alınamadı.'); return null; }
   const girisFiyat = fiyatlar[secilenCoin];
 
   let hedefFiyat, stopFiyat;
@@ -218,6 +229,7 @@ async function yeniPozisyonAc() {
   if (!state.coinStats[secilenCoin]) state.coinStats[secilenCoin] = { islem: 0, kar: 0 };
   state.coinStats[secilenCoin].islem++;
   saveState(state);
+  console.log(`✅ Yeni ${tip} pozisyon açıldı: ${secilenCoin} | $${miktar.toFixed(2)} | ${kaldıraç}x`);
   return poz;
 }
 
@@ -317,12 +329,13 @@ async function pozisyonlariGuncelle() {
 // ============================================================
 setInterval(async () => {
   if (state.botCalisiyor) {
+    console.log('⏳ Döngü çalışıyor...');
     await pozisyonlariGuncelle();
     if (state.aktifSermaye >= MIN_SERMAYE && state.pozisyonlar.length < MAX_POZISYON) {
       await yeniPozisyonAc();
     }
   }
-}, 3000);
+}, 5000); // Her 5 saniyede bir
 
 // ============================================================
 // API ROUTE'LAR
