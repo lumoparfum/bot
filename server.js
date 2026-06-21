@@ -11,9 +11,6 @@ app.use(express.static('public'));
 
 const STATE_FILE = path.join(__dirname, 'state.json');
 
-// ============================================================
-// STATE YÖNETİMİ (Kalıcı)
-// ============================================================
 function loadState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
@@ -29,7 +26,6 @@ function saveState(data) {
   } catch (e) { console.error('State yazma hatası:', e); }
 }
 
-// Varsayılan state
 const defaultState = {
   aktifSermaye: 500.0,
   baslangicSermaye: 500.0,
@@ -45,13 +41,16 @@ const defaultState = {
   pozisyonId: 0,
   toplamKazanc: 0,
   toplamKayip: 0,
+  equityCurve: [{ t: Date.now(), v: 500 }],
+  pnlGecmisi: [],
+  coinStats: {},
 };
 
 let state = loadState() || defaultState;
 saveState(state);
 
 // ============================================================
-// KONFİGÜRASYON
+// KONFİG
 // ============================================================
 const MIN_ISLEM = 3;
 const MAX_ISLEM = 10;
@@ -76,16 +75,14 @@ const COIN_LIST = [
 ];
 
 // ============================================================
-// API FONKSİYONLARI
+// API
 // ============================================================
 async function tumFiyatlariGetir() {
   try {
     const res = await axios.get('https://api.binance.com/api/v3/ticker/price');
     const fiyatlar = {};
     for (const item of res.data) {
-      if (COIN_LIST.includes(item.symbol)) {
-        fiyatlar[item.symbol] = parseFloat(item.price);
-      }
+      if (COIN_LIST.includes(item.symbol)) fiyatlar[item.symbol] = parseFloat(item.price);
     }
     return fiyatlar;
   } catch { return null; }
@@ -96,16 +93,14 @@ async function tumPerformanslariGetir() {
     const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
     const perf = {};
     for (const item of res.data) {
-      if (COIN_LIST.includes(item.symbol)) {
-        perf[item.symbol] = parseFloat(item.priceChangePercent);
-      }
+      if (COIN_LIST.includes(item.symbol)) perf[item.symbol] = parseFloat(item.priceChangePercent);
     }
     return perf;
   } catch { return null; }
 }
 
 // ============================================================
-// YARDIMCI FONKSİYONLAR
+// YARDIMCI
 // ============================================================
 function toplamMiktarHesapla() {
   return state.pozisyonlar.reduce((s, p) => s + p.miktar, 0);
@@ -130,21 +125,17 @@ function toplamDD() {
 }
 
 // ============================================================
-// YENİ POZİSYON AÇMA
+// YENİ POZİSYON AÇ
 // ============================================================
 async function yeniPozisyonAc() {
   if (!state.botCalisiyor) return null;
   if (state.aktifSermaye < MIN_SERMAYE) return null;
   if (state.pozisyonlar.length >= MAX_POZISYON) return null;
-
-  const dd = gunlukDD();
-  if (dd >= DD_LIMIT) return null;
+  if (gunlukDD() >= DD_LIMIT) return null;
 
   const toplam = toplamMiktarHesapla();
   if (state.aktifSermaye - toplam < MIN_SERMAYE) return null;
-
-  const risk = toplamRiskHesapla();
-  if (risk > state.aktifSermaye * 0.40) return null;
+  if (toplamRiskHesapla() > state.aktifSermaye * 0.40) return null;
 
   const perf = await tumPerformanslariGetir();
   if (!perf) return null;
@@ -165,24 +156,18 @@ async function yeniPozisyonAc() {
   else secilenCoin = uygunFiltre[Math.floor(Math.random() * uygunFiltre.length)];
 
   const degisim = perf[secilenCoin];
-  let tip;
-  if (degisim < -0.3) tip = 'LONG';
-  else if (degisim > 0.3) tip = 'SHORT';
-  else tip = Math.random() < 0.5 ? 'LONG' : 'SHORT';
+  let tip = (degisim < -0.3) ? 'LONG' : (degisim > 0.3) ? 'SHORT' : (Math.random() < 0.5 ? 'LONG' : 'SHORT');
 
   const available = state.aktifSermaye - toplam;
   if (available < MIN_ISLEM) return null;
-  const maxMiktar = Math.min(MAX_ISLEM, available);
+  let maxMiktar = Math.min(MAX_ISLEM, available);
   if (maxMiktar < MIN_ISLEM) return null;
   let miktar = MIN_ISLEM + Math.random() * (maxMiktar - MIN_ISLEM);
   miktar = Math.max(MIN_ISLEM, Math.min(miktar, MAX_ISLEM, available));
   if (miktar < MIN_ISLEM) return null;
 
   const vol = Math.abs(degisim);
-  let kaldıraç;
-  if (vol < 0.5) kaldıraç = 3 + Math.floor(Math.random() * 2);
-  else if (vol < 1.5) kaldıraç = 4 + Math.floor(Math.random() * 3);
-  else kaldıraç = 5 + Math.floor(Math.random() * 3);
+  let kaldıraç = (vol < 0.5) ? 3 + Math.floor(Math.random() * 2) : (vol < 1.5) ? 4 + Math.floor(Math.random() * 3) : 5 + Math.floor(Math.random() * 3);
   kaldıraç = Math.min(kaldıraç, 8);
 
   let hedefYuzde = MIN_HEDEF + Math.random() * (MAX_HEDEF - MIN_HEDEF);
@@ -206,10 +191,7 @@ async function yeniPozisyonAc() {
 
   let likidasyon = 0;
   if (kaldıraç > 1) {
-    if (tip === 'LONG')
-      likidasyon = girisFiyat * (1 - (1 / kaldıraç) + TAKER_FEE);
-    else
-      likidasyon = girisFiyat * (1 + (1 / kaldıraç) - TAKER_FEE);
+    likidasyon = tip === 'LONG' ? girisFiyat * (1 - (1 / kaldıraç) + TAKER_FEE) : girisFiyat * (1 + (1 / kaldıraç) - TAKER_FEE);
   }
 
   const poz = {
@@ -233,6 +215,8 @@ async function yeniPozisyonAc() {
 
   state.pozisyonlar.push(poz);
   state.aktifSermaye -= miktar;
+  if (!state.coinStats[secilenCoin]) state.coinStats[secilenCoin] = { islem: 0, kar: 0 };
+  state.coinStats[secilenCoin].islem++;
   saveState(state);
   return poz;
 }
@@ -252,12 +236,7 @@ async function pozisyonlariGuncelle() {
     const guncel = fiyatlar[poz.coin];
     if (!guncel) continue;
 
-    let degisim;
-    if (poz.tip === 'LONG')
-      degisim = (guncel - poz.girisFiyat) / poz.girisFiyat;
-    else
-      degisim = (poz.girisFiyat - guncel) / poz.girisFiyat;
-
+    let degisim = poz.tip === 'LONG' ? (guncel - poz.girisFiyat) / poz.girisFiyat : (poz.girisFiyat - guncel) / poz.girisFiyat;
     const karYuzde = degisim * 100 * poz.kaldıraç;
     const karTutar = (poz.miktar * degisim * poz.kaldıraç) - (poz.miktar * TAKER_FEE * 2 * poz.kaldıraç);
     poz.karYuzde = karYuzde;
@@ -266,14 +245,11 @@ async function pozisyonlariGuncelle() {
     if (karTutar > poz.maxKar) {
       poz.maxKar = karTutar;
       if (karYuzde > (poz.hedefYuzde * 100 * poz.kaldıraç * 0.35)) {
-        if (poz.tip === 'LONG')
-          poz.stopFiyat = Math.max(poz.stopFiyat, poz.girisFiyat * (1 + poz.stopYuzde * 0.3));
-        else
-          poz.stopFiyat = Math.min(poz.stopFiyat, poz.girisFiyat * (1 - poz.stopYuzde * 0.3));
+        if (poz.tip === 'LONG') poz.stopFiyat = Math.max(poz.stopFiyat, poz.girisFiyat * (1 + poz.stopYuzde * 0.3));
+        else poz.stopFiyat = Math.min(poz.stopFiyat, poz.girisFiyat * (1 - poz.stopYuzde * 0.3));
       }
     }
 
-    // Likidasyon
     let likidasyonOldu = false;
     if (poz.kaldıraç > 1 && poz.likidasyon) {
       if (poz.tip === 'LONG' && guncel <= poz.likidasyon) likidasyonOldu = true;
@@ -283,19 +259,15 @@ async function pozisyonlariGuncelle() {
       state.kayipSayisi++;
       state.toplamKayip += poz.miktar;
       state.toplamIslem++;
-      state.islemGecmisi.push({
-        coin: poz.coin, tip: poz.tip, miktar: poz.miktar,
-        giris: poz.girisFiyat, cikis: guncel,
-        kar: -poz.miktar, karYuzde: -100,
-        kaldıraç: poz.kaldıraç, neden: 'LİKİDASYON',
-        tarih: new Date().toLocaleString('tr-TR')
-      });
+      state.islemGecmisi.push({ coin: poz.coin, tip: poz.tip, miktar: poz.miktar, giris: poz.girisFiyat, cikis: guncel, kar: -poz.miktar, karYuzde: -100, kaldıraç: poz.kaldıraç, neden: 'LİKİDASYON', tarih: new Date().toLocaleString('tr-TR') });
+      state.pnlGecmisi.push(-poz.miktar);
+      if (state.coinStats[poz.coin]) state.coinStats[poz.coin].kar -= poz.miktar;
       kapatilacaklar.push(i);
       continue;
     }
 
-    // Hedef/stop
-    let hedefAsildi = false, stopAsildi = false;
+    let hedefAsildi = false,
+      stopAsildi = false;
     if (poz.tip === 'LONG') {
       if (guncel >= poz.hedefFiyat) hedefAsildi = true;
       if (guncel <= poz.stopFiyat) stopAsildi = true;
@@ -307,12 +279,9 @@ async function pozisyonlariGuncelle() {
     if (hedefAsildi || stopAsildi) {
       const neden = hedefAsildi ? 'HEDEF' : 'STOP';
       const kar = karTutar;
-
       if (kar >= 0) {
-        const yedege = kar * 0.40;
-        const aktife = poz.miktar + kar * 0.60;
-        state.yedekKasa += yedege;
-        state.aktifSermaye += aktife;
+        state.yedekKasa += kar * 0.40;
+        state.aktifSermaye += poz.miktar + kar * 0.60;
         state.kazancSayisi++;
         state.toplamKazanc += kar;
       } else {
@@ -321,26 +290,24 @@ async function pozisyonlariGuncelle() {
         state.toplamKayip += Math.abs(kar);
       }
       state.toplamIslem++;
-      state.islemGecmisi.push({
-        coin: poz.coin, tip: poz.tip, miktar: poz.miktar,
-        giris: poz.girisFiyat, cikis: guncel,
-        kar, karYuzde, kaldıraç: poz.kaldıraç, neden,
-        tarih: new Date().toLocaleString('tr-TR')
-      });
+      state.islemGecmisi.push({ coin: poz.coin, tip: poz.tip, miktar: poz.miktar, giris: poz.girisFiyat, cikis: guncel, kar, karYuzde, kaldıraç: poz.kaldıraç, neden, tarih: new Date().toLocaleString('tr-TR') });
+      state.pnlGecmisi.push(kar);
+      if (state.coinStats[poz.coin]) state.coinStats[poz.coin].kar += kar;
       kapatilacaklar.push(i);
     }
   }
 
-  // Kapatılacakları kaldır (tersten)
   for (let i = kapatilacaklar.length - 1; i >= 0; i--) {
     state.pozisyonlar.splice(kapatilacaklar[i], 1);
   }
 
-  // Max sermaye
   const toplamDeger = state.aktifSermaye + state.yedekKasa;
   if (toplamDeger > state.maxSermaye) state.maxSermaye = toplamDeger;
   const dd = toplamDD();
   if (dd > state.maxDrawdown) state.maxDrawdown = dd;
+
+  state.equityCurve.push({ t: Date.now(), v: toplamDeger });
+  if (state.equityCurve.length > 200) state.equityCurve.shift();
 
   saveState(state);
 }
@@ -358,7 +325,7 @@ setInterval(async () => {
 }, 3000);
 
 // ============================================================
-// API ROUTE'LARI
+// API ROUTE'LAR
 // ============================================================
 app.get('/status', (req, res) => {
   const toplamKZ = state.aktifSermaye + state.yedekKasa - state.baslangicSermaye;
@@ -379,7 +346,10 @@ app.get('/status', (req, res) => {
     toplamIslem: state.toplamIslem,
     kazancSayisi: state.kazancSayisi,
     kayipSayisi: state.kayipSayisi,
-    maxDrawdown: (state.maxDrawdown * 100).toFixed(2)
+    maxDrawdown: (state.maxDrawdown * 100).toFixed(2),
+    equityCurve: state.equityCurve,
+    pnlGecmisi: state.pnlGecmisi,
+    coinStats: state.coinStats,
   });
 });
 
@@ -430,9 +400,6 @@ app.get('/rapor', (req, res) => {
   res.send(rapor);
 });
 
-// ============================================================
-// SUNUCU
-// ============================================================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Bot sunucusu ${PORT} portunda çalışıyor.`);
