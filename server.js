@@ -1,30 +1,98 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// ============================================================
+// VERİLERİ YÜKLE / KAYDET
+// ============================================================
+function veriYukle() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE);
+      return JSON.parse(raw);
+    }
+  } catch (e) { console.error('Veri yükleme hatası:', e); }
+  return null;
+}
+
+function veriKaydet(veri) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(veri, null, 2));
+  } catch (e) { console.error('Veri kaydetme hatası:', e); }
+}
+
+// Varsayılan veri
+let defaultData = {
+  aktifSermaye: 500.0,
+  baslangicSermaye: 500.0,
+  yedekKasa: 0.0,
+  botCalisiyor: false,
+  toplamIslem: 0,
+  kazancSayisi: 0,
+  kayipSayisi: 0,
+  pozisyonlar: [],
+  islemGecmisi: [],
+  maxDrawdown: 0,
+  maxSermaye: 500.0,
+  pozisyonId: 0,
+  toplamKazanc: 0,
+  toplamKayip: 0
+};
+
+// Veriyi yükle veya varsayılanı kullan
+let veri = veriYukle() || JSON.parse(JSON.stringify(defaultData));
+
+// Değişkenlere ata (kullanım kolaylığı için)
+let {
+  aktifSermaye,
+  baslangicSermaye,
+  yedekKasa,
+  botCalisiyor,
+  toplamIslem,
+  kazancSayisi,
+  kayipSayisi,
+  pozisyonlar,
+  islemGecmisi,
+  maxDrawdown,
+  maxSermaye,
+  pozisyonId,
+  toplamKazanc,
+  toplamKayip
+} = veri;
+
+// Her değişiklikte veriyi güncelle ve dosyaya yaz
+function veriyiGuncelle() {
+  veri = {
+    aktifSermaye,
+    baslangicSermaye,
+    yedekKasa,
+    botCalisiyor,
+    toplamIslem,
+    kazancSayisi,
+    kayipSayisi,
+    pozisyonlar,
+    islemGecmisi,
+    maxDrawdown,
+    maxSermaye,
+    pozisyonId,
+    toplamKazanc,
+    toplamKayip
+  };
+  veriKaydet(veri);
+}
+
 // ============================================================
 // KONFİGÜRASYON
 // ============================================================
-let aktifSermaye = 500.0;
-let baslangicSermaye = 500.0;
-let yedekKasa = 0.0;
-let botCalisiyor = false; // BAŞLANGIÇTA KAPALI
-let toplamIslem = 0;
-let kazancSayisi = 0;
-let kayipSayisi = 0;
-let pozisyonlar = [];
-let islemGecmisi = [];
-let maxDrawdown = 0;
-let maxSermaye = 500.0;
-let pozisyonId = 0;
-let toplamKazanc = 0;
-let toplamKayip = 0;
-
 const MIN_ISLEM = 3;
 const MAX_ISLEM = 10;
 const MIN_SERMAYE = 20;
@@ -113,7 +181,6 @@ async function yeniPozisyonAc() {
   if (dd >= DD_LIMIT) return null;
 
   const toplam = toplamMiktarHesapla();
-  // LİMİT YOK: kasada 20$ kalana kadar aç
   if (aktifSermaye - toplam < MIN_SERMAYE) return null;
 
   const risk = toplamRiskHesapla();
@@ -206,6 +273,7 @@ async function yeniPozisyonAc() {
 
   pozisyonlar.push(poz);
   aktifSermaye -= miktar;
+  veriyiGuncelle();
 
   return poz;
 }
@@ -236,7 +304,6 @@ async function pozisyonlariGuncelle() {
     poz.karYuzde = karYuzde;
     poz.karTutar = karTutar;
 
-    // Trailing stop
     if (karTutar > poz.maxKar) {
       poz.maxKar = karTutar;
       if (karYuzde > (poz.hedefYuzde * 100 * poz.kaldıraç * 0.35)) {
@@ -247,7 +314,6 @@ async function pozisyonlariGuncelle() {
       }
     }
 
-    // Likidasyon
     let likidasyonOldu = false;
     if (poz.kaldıraç > 1 && poz.likidasyon) {
       if (poz.tip === 'LONG' && guncel <= poz.likidasyon) likidasyonOldu = true;
@@ -268,7 +334,6 @@ async function pozisyonlariGuncelle() {
       continue;
     }
 
-    // Hedef/stop
     let hedefAsildi = false, stopAsildi = false;
     if (poz.tip === 'LONG') {
       if (guncel >= poz.hedefFiyat) hedefAsildi = true;
@@ -308,11 +373,12 @@ async function pozisyonlariGuncelle() {
   for (let i = kapatilacaklar.length - 1; i >= 0; i--)
     pozisyonlar.splice(kapatilacaklar[i], 1);
 
-  // Max sermaye
   const toplamDeger = aktifSermaye + yedekKasa;
   if (toplamDeger > maxSermaye) maxSermaye = toplamDeger;
   const dd = toplamDD();
   if (dd > maxDrawdown) maxDrawdown = dd;
+
+  veriyiGuncelle();
 }
 
 // ============================================================
@@ -356,6 +422,7 @@ app.get('/status', (req, res) => {
 app.post('/start', (req, res) => {
   if (!botCalisiyor) {
     botCalisiyor = true;
+    veriyiGuncelle();
     res.json({ mesaj: 'Bot başlatıldı.' });
   } else {
     res.json({ mesaj: 'Bot zaten çalışıyor.' });
@@ -365,6 +432,7 @@ app.post('/start', (req, res) => {
 app.post('/stop', (req, res) => {
   if (botCalisiyor) {
     botCalisiyor = false;
+    veriyiGuncelle();
     res.json({ mesaj: 'Bot durduruldu.' });
   } else {
     res.json({ mesaj: 'Bot zaten durdurulmuş.' });
