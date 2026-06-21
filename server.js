@@ -75,14 +75,37 @@ const COIN_LIST = [
 ];
 
 // ============================================================
-// API
+// API FONKSİYONLARI (Alternatif URL'ler ile)
 // ============================================================
+const BINANCE_ENDPOINTS = [
+  'https://api.binance.com',
+  'https://api1.binance.com',
+  'https://api2.binance.com',
+  'https://api3.binance.com'
+];
+
+async function fetchWithFallback(path, timeout = 5000) {
+  let lastError = null;
+  for (const baseUrl of BINANCE_ENDPOINTS) {
+    try {
+      const url = `${baseUrl}${path}`;
+      console.log(`📡 Deneniyor: ${url}`);
+      const res = await axios.get(url, { timeout });
+      return res.data;
+    } catch (e) {
+      lastError = e;
+      console.log(`❌ ${baseUrl} başarısız: ${e.message}`);
+    }
+  }
+  throw lastError || new Error('Tüm endpointler başarısız');
+}
+
 async function tumFiyatlariGetir() {
   try {
     console.log('📡 Fiyatlar çekiliyor...');
-    const res = await axios.get('https://api.binance.com/api/v3/ticker/price', { timeout: 5000 });
+    const data = await fetchWithFallback('/api/v3/ticker/price', 5000);
     const fiyatlar = {};
-    for (const item of res.data) {
+    for (const item of data) {
       if (COIN_LIST.includes(item.symbol)) fiyatlar[item.symbol] = parseFloat(item.price);
     }
     console.log(`✅ ${Object.keys(fiyatlar).length} coin fiyatı alındı.`);
@@ -96,9 +119,9 @@ async function tumFiyatlariGetir() {
 async function tumPerformanslariGetir() {
   try {
     console.log('📡 Performans verileri çekiliyor...');
-    const res = await axios.get('https://api.binance.com/api/v3/ticker/24hr', { timeout: 5000 });
+    const data = await fetchWithFallback('/api/v3/ticker/24hr', 5000);
     const perf = {};
-    for (const item of res.data) {
+    for (const item of data) {
       if (COIN_LIST.includes(item.symbol)) perf[item.symbol] = parseFloat(item.priceChangePercent);
     }
     console.log(`✅ ${Object.keys(perf).length} coin performansı alındı.`);
@@ -335,7 +358,7 @@ setInterval(async () => {
       await yeniPozisyonAc();
     }
   }
-}, 5000); // Her 5 saniyede bir
+}, 5000);
 
 // ============================================================
 // API ROUTE'LAR
