@@ -13,7 +13,7 @@ app.use(express.static('public'));
 let aktifSermaye = 500.0;
 let baslangicSermaye = 500.0;
 let yedekKasa = 0.0;
-let botCalisiyor = false;
+let botCalisiyor = false; // BAŞLANGIÇTA KAPALI
 let toplamIslem = 0;
 let kazancSayisi = 0;
 let kayipSayisi = 0;
