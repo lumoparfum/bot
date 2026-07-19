@@ -36,6 +36,7 @@ function mapListing(id: string, data: DocumentData): Listing {
     sellerPhotoURL: data.sellerPhotoURL ?? null,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     status: data.status ?? 'active',
+    viewCount: data.viewCount ?? 0,
   };
 }
 
@@ -68,8 +69,13 @@ export async function createListing(input: NewListingInput): Promise<string> {
     sellerPhotoURL: input.sellerPhotoURL,
     createdAt: serverTimestamp(),
     status: 'active',
+    viewCount: 0,
   });
   return newDocRef.id;
+}
+
+export async function incrementListingView(listingId: string): Promise<void> {
+  await updateDoc(doc(db, 'listings', listingId), { viewCount: increment(1) }).catch(() => {});
 }
 
 export async function markListingSold(listingId: string, sellerId: string): Promise<void> {

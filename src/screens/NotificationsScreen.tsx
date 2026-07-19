@@ -13,13 +13,25 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { markAllNotificationsRead, markNotificationRead } from '../services/notificationFeed';
 import { formatRelativeDate } from '../utils/format';
-import type { AppNotification } from '../types/notification';
+import type { AppNotification, NotificationType } from '../types/notification';
 import type { HomeStackParamList, MainTabParamList } from '../types/navigation';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<HomeStackParamList, 'Notifications'>,
   BottomTabScreenProps<MainTabParamList>
 >;
+
+function notificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMap {
+  switch (type) {
+    case 'favorite':
+      return 'heart';
+    case 'savedSearch':
+      return 'bookmark';
+    case 'message':
+    default:
+      return 'chatbubble';
+  }
+}
 
 export default function NotificationsScreen({ navigation }: Props) {
   const { colors } = useTheme();
@@ -79,11 +91,7 @@ export default function NotificationsScreen({ navigation }: Props) {
               <Image source={{ uri: item.fromUserPhoto }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarFallback}>
-                <Ionicons
-                  name={item.type === 'favorite' ? 'heart' : 'chatbubble'}
-                  size={16}
-                  color={colors.primary}
-                />
+                <Ionicons name={notificationIcon(item.type)} size={16} color={colors.primary} />
               </View>
             )}
             <View style={styles.rowText}>

@@ -5,6 +5,7 @@ export type HomeStackParamList = {
   ListingDetail: { listingId: string };
   SellerProfile: { sellerId: string; sellerName: string };
   Notifications: undefined;
+  SavedSearches: undefined;
 };
 
 export type ProfileStackParamList = {

@@ -24,7 +24,12 @@ import { ReportModal } from '../components/ReportModal';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
-import { deleteListing, fetchListingById, markListingSold } from '../services/firestore';
+import {
+  deleteListing,
+  fetchListingById,
+  incrementListingView,
+  markListingSold,
+} from '../services/firestore';
 import { getOrCreateConversation } from '../services/chat';
 import { submitReport } from '../services/reports';
 import { useAuth } from '../context/AuthContext';
@@ -59,6 +64,9 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
     fetchListingById(listingId)
       .then((result) => {
         if (!cancelled) setListing(result);
+        if (result && result.sellerId !== user?.uid) {
+          incrementListingView(listingId);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -66,6 +74,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
 
   if (loading) {
@@ -242,6 +251,9 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <Text style={styles.metaText}>{listing.location.label || 'Konum belirtilmemiş'}</Text>
             <View style={styles.metaDot} />
             <Text style={styles.metaText}>{formatRelativeDate(listing.createdAt)}</Text>
+            <View style={styles.metaDot} />
+            <Ionicons name="eye-outline" size={14} color={colors.textFaint} />
+            <Text style={styles.metaText}>{listing.viewCount}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -260,8 +272,11 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
               </View>
             )}
             <View style={styles.sellerInfo}>
-              <Text style={styles.sellerName}>{listing.sellerName}</Text>
-              <Text style={styles.sellerMeta}>Stop82 Üyesi</Text>
+              <View style={styles.sellerNameRow}>
+                <Text style={styles.sellerName}>{listing.sellerName}</Text>
+                <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
+              </View>
+              <Text style={styles.sellerMeta}>Google ile doğrulandı</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
           </Pressable>
@@ -475,6 +490,11 @@ function createStyles(colors: ColorPalette) {
     sellerInfo: {
       flex: 1,
       gap: 2,
+    },
+    sellerNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     sellerName: {
       ...typography.headline,

@@ -122,8 +122,11 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
                   <Text style={styles.avatarText}>{sellerName.charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              <Text style={styles.name}>{sellerName}</Text>
-              <Text style={styles.meta}>Stop82 Üyesi</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{sellerName}</Text>
+                <Ionicons name="checkmark-circle" size={17} color={colors.primary} />
+              </View>
+              <Text style={styles.meta}>Google ile doğrulandı</Text>
 
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
@@ -258,10 +261,15 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '700',
       fontSize: 26,
     },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: spacing.sm,
+    },
     name: {
       ...typography.title3,
       color: colors.text,
-      marginTop: spacing.sm,
     },
     meta: {
       ...typography.caption,

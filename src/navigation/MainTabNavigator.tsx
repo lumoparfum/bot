@@ -23,6 +23,7 @@ const FULLSCREEN_ROUTES = new Set([
   'Settings',
   'Notifications',
   'Terms',
+  'SavedSearches',
 ]);
 
 export default function MainTabNavigator() {

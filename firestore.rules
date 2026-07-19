@@ -31,7 +31,13 @@ service cloud.firestore {
     match /listings/{listingId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+      // Ilan sahibi her seyi guncelleyebilir; baskalari sadece goruntulenme
+      // sayacini artirabilir (ilana her girildiginde +1).
+      allow update: if request.auth != null && (
+        resource.data.sellerId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+      );
 
       match /comments/{commentId} {
         allow read: if true;
@@ -68,7 +74,18 @@ service cloud.firestore {
         allow create: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
           && request.resource.data.senderId == request.auth.uid;
+        // Bir teklife sadece teklifi alan taraf (gonderen degil) cevap
+        // verebilir, ve sadece offerStatus alanini degistirebilir.
+        allow update: if request.auth != null
+          && request.auth.uid != resource.data.senderId
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offerStatus']);
       }
+    }
+
+    match /savedSearches/{searchId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.uid;
     }
   }
 }

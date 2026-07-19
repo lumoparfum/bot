@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -21,6 +21,22 @@ export default function ChatListScreen({ navigation }: Props) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { conversations } = useMessages();
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectionMode = () => {
+    setSelectionMode((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const openChat = (conversation: Conversation) => {
     if (!user) return;
@@ -37,16 +53,38 @@ export default function ChatListScreen({ navigation }: Props) {
     });
   };
 
-  const handleDelete = (conversation: Conversation) => {
-    if (!user) return;
-    Alert.alert('Sohbeti Sil', 'Bu sohbet mesaj listenden kaldırılacak. Emin misin?', [
-      { text: 'Vazgeç', style: 'cancel' },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: () => deleteConversationForUser(conversation.id, user.uid).catch(() => {}),
-      },
-    ]);
+  const handleRowPress = (conversation: Conversation) => {
+    if (selectionMode) {
+      toggleSelect(conversation.id);
+      return;
+    }
+    openChat(conversation);
+  };
+
+  const handleLongPress = (conversation: Conversation) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([conversation.id]));
+  };
+
+  const handleDeleteSelected = () => {
+    if (!user || selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    Alert.alert(
+      'Sohbetleri Sil',
+      `${count} sohbet mesaj listenden kaldırılacak. Emin misin?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => {
+            selectedIds.forEach((id) => deleteConversationForUser(id, user.uid).catch(() => {}));
+            setSelectionMode(false);
+            setSelectedIds(new Set());
+          },
+        },
+      ]
+    );
   };
 
   if (!user) {
@@ -68,6 +106,11 @@ export default function ChatListScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>Mesajlar</Text>
+        {conversations.length > 0 && (
+          <Pressable onPress={toggleSelectionMode} hitSlop={8}>
+            <Text style={styles.editLink}>{selectionMode ? 'İptal' : 'Düzenle'}</Text>
+          </Pressable>
+        )}
       </View>
       <FlatList
         data={conversations}
@@ -78,12 +121,20 @@ export default function ChatListScreen({ navigation }: Props) {
           const otherName = isSeller ? item.buyerName : item.sellerName;
           const otherPhoto = isSeller ? item.buyerPhotoURL : item.sellerPhotoURL;
           const unread = user ? item.unreadCount[user.uid] ?? 0 : 0;
+          const selected = selectedIds.has(item.id);
           return (
             <Pressable
               style={styles.row}
-              onPress={() => openChat(item)}
-              onLongPress={() => handleDelete(item)}
+              onPress={() => handleRowPress(item)}
+              onLongPress={() => handleLongPress(item)}
             >
+              {selectionMode && (
+                <Ionicons
+                  name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={22}
+                  color={selected ? colors.primary : colors.textFaint}
+                />
+              )}
               {item.listingImage ? (
                 <Image source={{ uri: item.listingImage }} style={styles.thumb} />
               ) : (
@@ -125,6 +176,16 @@ export default function ChatListScreen({ navigation }: Props) {
           </View>
         }
       />
+
+      {selectionMode && selectedIds.size > 0 && (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionBarText}>{selectedIds.size} seçili</Text>
+          <Pressable style={styles.selectionBarButton} onPress={handleDeleteSelected}>
+            <Ionicons name="trash-outline" size={16} color="#fff" />
+            <Text style={styles.selectionBarButtonText}>Sil</Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -136,6 +197,9 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: colors.background,
     },
     topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.sm,
       paddingBottom: spacing.md,
@@ -143,6 +207,11 @@ function createStyles(colors: ColorPalette) {
     topBarTitle: {
       ...typography.title2,
       color: colors.text,
+    },
+    editLink: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.primary,
     },
     listContent: {
       paddingHorizontal: spacing.lg,
@@ -221,6 +290,35 @@ function createStyles(colors: ColorPalette) {
       ...typography.subhead,
       color: colors.textMuted,
       textAlign: 'center',
+    },
+    selectionBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+      backgroundColor: colors.background,
+    },
+    selectionBarText: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    selectionBarButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.error,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    selectionBarButtonText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: '#fff',
     },
   });
 }

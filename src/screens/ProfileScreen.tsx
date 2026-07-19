@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +23,7 @@ import { radius, shadows, spacing, typography, type ColorPalette } from '../cons
 import { useTheme } from '../context/ThemeContext';
 import { fetchFavoriteListings, fetchListingsBySeller } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
 import type { Listing } from '../types/listing';
 import type { MainTabParamList, ProfileStackParamList } from '../types/navigation';
 
@@ -27,10 +37,13 @@ export default function ProfileScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
+  const { toggleFavorite } = useFavorites();
   const [segment, setSegment] = useState<Segment>('mine');
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -55,6 +68,44 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const openListing = (listingId: string) => {
     navigation.navigate('HomeTab', { screen: 'ListingDetail', params: { listingId } });
+  };
+
+  const handleChangeSegment = (next: Segment) => {
+    setSegment(next);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedFavorites = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    Alert.alert('Favorilerden Kaldır', `${ids.length} ilan favorilerinden kaldırılacak. Emin misin?`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Kaldır',
+        style: 'destructive',
+        onPress: () => {
+          ids.forEach((id) => toggleFavorite(id));
+          setFavorites((prev) => prev.filter((listing) => !selectedIds.has(listing.id)));
+          setSelectionMode(false);
+          setSelectedIds(new Set());
+        },
+      },
+    ]);
   };
 
   const handleInvite = () => {
@@ -128,19 +179,44 @@ export default function ProfileScreen({ navigation }: Props) {
               <SegmentButton
                 label="İlanlarım"
                 active={segment === 'mine'}
-                onPress={() => setSegment('mine')}
+                onPress={() => handleChangeSegment('mine')}
                 styles={styles}
               />
               <SegmentButton
                 label="Favorilerim"
                 active={segment === 'favorites'}
-                onPress={() => setSegment('favorites')}
+                onPress={() => handleChangeSegment('favorites')}
                 styles={styles}
               />
             </View>
+
+            {segment === 'favorites' && favorites.length > 0 && (
+              <Pressable onPress={toggleSelectionMode} style={styles.editLinkRow} hitSlop={8}>
+                <Text style={styles.editLink}>{selectionMode ? 'İptal' : 'Düzenle'}</Text>
+              </Pressable>
+            )}
           </View>
         }
-        renderItem={({ item }) => <ListingCard listing={item} onPress={() => openListing(item.id)} />}
+        renderItem={({ item }) => {
+          if (segment === 'favorites' && selectionMode) {
+            const selected = selectedIds.has(item.id);
+            return (
+              <Pressable style={styles.cardWrap} onPress={() => toggleSelect(item.id)}>
+                <View pointerEvents="none">
+                  <ListingCard listing={item} onPress={() => {}} />
+                </View>
+                <View style={styles.selectBadge}>
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={selected ? colors.primary : '#fff'}
+                  />
+                </View>
+              </Pressable>
+            );
+          }
+          return <ListingCard listing={item} onPress={() => openListing(item.id)} />;
+        }}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator color={colors.primary} style={styles.loading} />
@@ -160,6 +236,16 @@ export default function ProfileScreen({ navigation }: Props) {
           )
         }
       />
+
+      {segment === 'favorites' && selectionMode && selectedIds.size > 0 && (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionBarText}>{selectedIds.size} seçili</Text>
+          <Pressable style={styles.selectionBarButton} onPress={handleDeleteSelectedFavorites}>
+            <Ionicons name="heart-dislike-outline" size={16} color="#fff" />
+            <Text style={styles.selectionBarButtonText}>Favorilerden Kaldır</Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -289,6 +375,54 @@ function createStyles(colors: ColorPalette) {
     },
     loading: {
       marginTop: spacing.xl,
+    },
+    editLinkRow: {
+      alignItems: 'flex-end',
+      marginBottom: spacing.sm,
+    },
+    editLink: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    cardWrap: {
+      flex: 1,
+      position: 'relative',
+    },
+    selectBadge: {
+      position: 'absolute',
+      top: spacing.sm,
+      left: spacing.sm,
+      borderRadius: 11,
+    },
+    selectionBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+      backgroundColor: colors.background,
+    },
+    selectionBarText: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    selectionBarButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.error,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    selectionBarButtonText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: '#fff',
     },
   });
 }

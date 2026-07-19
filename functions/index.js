@@ -102,6 +102,67 @@ exports.onNewFavorite = onDocumentCreated(
   }
 );
 
+exports.onNewListingMatchSavedSearches = onDocumentCreated(
+  { document: 'listings/{listingId}', region: REGION },
+  async (event) => {
+    const listing = event.data?.data();
+    if (!listing) return;
+    const { listingId } = event.params;
+
+    const searchesSnap = await db.collection('savedSearches').get();
+    if (searchesSnap.empty) return;
+
+    const title = (listing.title ?? '').toLocaleLowerCase('tr-TR');
+    const description = (listing.description ?? '').toLocaleLowerCase('tr-TR');
+
+    const matches = searchesSnap.docs.filter((docSnap) => {
+      const search = docSnap.data();
+      if (search.uid === listing.sellerId) return false;
+      if (search.query) {
+        const q = search.query.toLocaleLowerCase('tr-TR');
+        if (!title.includes(q) && !description.includes(q)) return false;
+      }
+      if (search.category && search.category !== listing.category) return false;
+      if (search.minPrice != null && listing.price < search.minPrice) return false;
+      if (search.maxPrice != null && listing.price > search.maxPrice) return false;
+      return true;
+    });
+
+    // Ayni kullanici birden fazla eslesen aramaya sahipse tek bildirim yeterli.
+    const notifiedUids = new Set();
+
+    await Promise.all(
+      matches.map(async (docSnap) => {
+        const search = docSnap.data();
+        if (notifiedUids.has(search.uid)) return;
+        notifiedUids.add(search.uid);
+
+        await db.collection('users').doc(search.uid).collection('notifications').add({
+          type: 'savedSearch',
+          title: 'Kayıtlı aramanla eşleşen yeni ilan',
+          body: listing.title,
+          listingId,
+          listingImage: listing.images?.[0] ?? null,
+          conversationId: null,
+          fromUserId: listing.sellerId,
+          fromUserName: listing.sellerName ?? 'Stop82',
+          fromUserPhoto: listing.sellerPhotoURL ?? null,
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        const userSnap = await db.doc(`users/${search.uid}`).get();
+        await sendPush(
+          userSnap.data()?.pushToken,
+          'Kayıtlı aramanla eşleşen yeni ilan',
+          listing.title,
+          { listingId }
+        );
+      })
+    );
+  }
+);
+
 exports.cleanupExpiredListings = onSchedule(
   { schedule: 'every 24 hours', region: REGION },
   async () => {

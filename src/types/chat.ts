@@ -17,9 +17,14 @@ export type Conversation = {
   hiddenFor: string[];
 };
 
+export type OfferStatus = 'pending' | 'accepted' | 'declined';
+
 export type ChatMessage = {
   id: string;
   senderId: string;
   text: string;
   createdAt: number;
+  type: 'text' | 'offer';
+  offerAmount: number | null;
+  offerStatus: OfferStatus | null;
 };

@@ -1,4 +1,4 @@
-export type NotificationType = 'favorite' | 'message';
+export type NotificationType = 'favorite' | 'message' | 'savedSearch';
 
 export type AppNotification = {
   id: string;

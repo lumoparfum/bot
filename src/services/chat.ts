@@ -50,6 +50,9 @@ function mapMessage(id: string, data: DocumentData): ChatMessage {
     senderId: data.senderId,
     text: data.text,
     createdAt: toMillis(data.createdAt),
+    type: data.type ?? 'text',
+    offerAmount: data.offerAmount ?? null,
+    offerStatus: data.offerStatus ?? null,
   };
 }
 
@@ -122,6 +125,23 @@ export function subscribeToMessages(
   });
 }
 
+async function touchConversation(
+  conversationId: string,
+  senderId: string,
+  recipientId: string,
+  lastMessage: string
+): Promise<void> {
+  await updateDoc(doc(db, 'conversations', conversationId), {
+    lastMessage,
+    lastMessageAt: serverTimestamp(),
+    lastSenderId: senderId,
+    [`unreadCount.${recipientId}`]: increment(1),
+    // Karsi taraf sohbeti daha once kendi listesinden sildiyse, yeni mesajla
+    // birlikte tekrar listesinde gorunsun.
+    hiddenFor: arrayRemove(recipientId),
+  });
+}
+
 export async function sendMessage(
   conversationId: string,
   senderId: string,
@@ -133,16 +153,39 @@ export async function sendMessage(
   await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
     senderId,
     text: trimmed,
+    type: 'text',
+    offerAmount: null,
+    offerStatus: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(db, 'conversations', conversationId), {
-    lastMessage: trimmed,
-    lastMessageAt: serverTimestamp(),
-    lastSenderId: senderId,
-    [`unreadCount.${recipientId}`]: increment(1),
-    // Karsi taraf sohbeti daha once kendi listesinden sildiyse, yeni mesajla
-    // birlikte tekrar listesinde gorunsun.
-    hiddenFor: arrayRemove(recipientId),
+  await touchConversation(conversationId, senderId, recipientId, trimmed);
+}
+
+export async function sendOffer(
+  conversationId: string,
+  senderId: string,
+  recipientId: string,
+  amount: number
+): Promise<void> {
+  const summary = `₺${amount.toLocaleString('tr-TR')} teklif etti`;
+  await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
+    senderId,
+    text: summary,
+    type: 'offer',
+    offerAmount: amount,
+    offerStatus: 'pending',
+    createdAt: serverTimestamp(),
+  });
+  await touchConversation(conversationId, senderId, recipientId, summary);
+}
+
+export async function respondToOffer(
+  conversationId: string,
+  messageId: string,
+  status: 'accepted' | 'declined'
+): Promise<void> {
+  await updateDoc(doc(db, 'conversations', conversationId, 'messages', messageId), {
+    offerStatus: status,
   });
 }
 

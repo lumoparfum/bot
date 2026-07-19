@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,12 +17,26 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { OfferModal } from '../components/OfferModal';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { markConversationRead, sendMessage, subscribeToMessages } from '../services/chat';
+import {
+  markConversationRead,
+  respondToOffer,
+  sendMessage,
+  sendOffer,
+  subscribeToMessages,
+} from '../services/chat';
 import type { ChatMessage } from '../types/chat';
 import type { MainTabParamList, MessagesStackParamList } from '../types/navigation';
+
+const QUICK_REPLIES = [
+  'Hâlâ satılık mı?',
+  'Son fiyat nedir?',
+  'Nerede buluşabiliriz?',
+  'Uygun, alıyorum',
+];
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MessagesStackParamList, 'Chat'>,
@@ -38,6 +53,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(conversationId, setMessages);
@@ -57,9 +73,9 @@ export default function ChatScreen({ route, navigation }: Props) {
     });
   };
 
-  const handleSend = async () => {
-    if (!user || !text.trim() || sending) return;
-    const value = text.trim();
+  const handleSend = async (overrideText?: string) => {
+    const value = (overrideText ?? text).trim();
+    if (!user || !value || sending) return;
     setText('');
     setSending(true);
     try {
@@ -67,6 +83,15 @@ export default function ChatScreen({ route, navigation }: Props) {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSendOffer = async (amount: number) => {
+    if (!user) return;
+    await sendOffer(conversationId, user.uid, otherUserId, amount);
+  };
+
+  const handleRespondToOffer = (message: ChatMessage, status: 'accepted' | 'declined') => {
+    respondToOffer(conversationId, message.id, status).catch(() => {});
   };
 
   return (
@@ -106,6 +131,46 @@ export default function ChatScreen({ route, navigation }: Props) {
           contentContainerStyle={styles.messageList}
           renderItem={({ item }) => {
             const isMine = item.senderId === user?.uid;
+
+            if (item.type === 'offer') {
+              const canRespond = !isMine && item.offerStatus === 'pending';
+              return (
+                <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
+                  <View style={styles.offerCard}>
+                    <View style={styles.offerHeader}>
+                      <Ionicons name="pricetag" size={16} color={colors.primary} />
+                      <Text style={styles.offerAmount}>
+                        ₺{(item.offerAmount ?? 0).toLocaleString('tr-TR')}
+                      </Text>
+                    </View>
+                    <Text style={styles.offerStatusText}>
+                      {item.offerStatus === 'accepted'
+                        ? 'Teklif kabul edildi'
+                        : item.offerStatus === 'declined'
+                          ? 'Teklif reddedildi'
+                          : 'Teklif bekleniyor'}
+                    </Text>
+                    {canRespond && (
+                      <View style={styles.offerActions}>
+                        <Pressable
+                          style={styles.offerDeclineButton}
+                          onPress={() => handleRespondToOffer(item, 'declined')}
+                        >
+                          <Text style={styles.offerDeclineText}>Reddet</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.offerAcceptButton}
+                          onPress={() => handleRespondToOffer(item, 'accepted')}
+                        >
+                          <Text style={styles.offerAcceptText}>Kabul Et</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            }
+
             return (
               <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
                 <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -121,7 +186,24 @@ export default function ChatScreen({ route, navigation }: Props) {
           }
         />
 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.quickReplyRow}
+          contentContainerStyle={styles.quickReplyContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {QUICK_REPLIES.map((reply) => (
+            <Pressable key={reply} style={styles.quickReplyChip} onPress={() => handleSend(reply)}>
+              <Text style={styles.quickReplyText}>{reply}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         <View style={[styles.inputRow, { paddingBottom: insets.bottom + spacing.sm }]}>
+          <Pressable style={styles.offerButton} onPress={() => setOfferModalVisible(true)} hitSlop={6}>
+            <Ionicons name="pricetag-outline" size={19} color={colors.primary} />
+          </Pressable>
           <TextInput
             style={styles.input}
             value={text}
@@ -132,13 +214,19 @@ export default function ChatScreen({ route, navigation }: Props) {
           />
           <Pressable
             style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
-            onPress={handleSend}
+            onPress={() => handleSend()}
             disabled={!text.trim() || sending}
           >
             <Ionicons name="send" size={17} color="#fff" />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <OfferModal
+        visible={offerModalVisible}
+        onClose={() => setOfferModalVisible(false)}
+        onSubmit={handleSendOffer}
+      />
     </SafeAreaView>
   );
 }
@@ -230,6 +318,79 @@ function createStyles(colors: ColorPalette) {
     bubbleTextMine: {
       color: '#fff',
     },
+    offerCard: {
+      maxWidth: '78%',
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.xs,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    offerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    offerAmount: {
+      ...typography.title3,
+      color: colors.text,
+    },
+    offerStatusText: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+    offerActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    offerDeclineButton: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    offerDeclineText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    offerAcceptButton: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: radius.sm,
+      backgroundColor: colors.primary,
+    },
+    offerAcceptText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: '#fff',
+    },
+    quickReplyRow: {
+      flexGrow: 0,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.sm,
+    },
+    quickReplyContent: {
+      gap: spacing.sm,
+    },
+    quickReplyChip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    quickReplyText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.text,
+    },
     inputRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -238,6 +399,14 @@ function createStyles(colors: ColorPalette) {
       paddingTop: spacing.sm,
       borderTopWidth: 1,
       borderTopColor: colors.divider,
+    },
+    offerButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     input: {
       flex: 1,

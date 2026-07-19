@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -23,6 +24,8 @@ import { useTheme } from '../context/ThemeContext';
 import { categories, categoryIcons } from '../types/listing';
 import type { Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
+import { createSavedSearch } from '../services/savedSearches';
+import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import {
@@ -51,6 +54,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'ListingList'>;
 
 export default function ListingListScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { unreadCount: unreadNotifications } = useNotifications();
   const requireAuth = useRequireAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -123,6 +127,23 @@ export default function ListingListScreen({ navigation }: Props) {
     if (location.latitude != null && location.longitude != null) {
       setUserLocation({ latitude: location.latitude, longitude: location.longitude });
     }
+  };
+
+  const handleSaveSearch = () => {
+    if (!requireAuth() || !user) return;
+    if (!query.trim() && selectedCategory === ALL && !minPrice && !maxPrice) {
+      Alert.alert('Arama Boş', 'Kaydetmeden önce bir arama yazın ya da filtre seçin.');
+      return;
+    }
+    createSavedSearch({
+      uid: user.uid,
+      query: query.trim(),
+      category: selectedCategory === ALL ? null : selectedCategory,
+      minPrice: minPrice ? Number(minPrice) : null,
+      maxPrice: maxPrice ? Number(maxPrice) : null,
+    })
+      .then(() => Alert.alert('Kaydedildi', 'Bu kritere uyan yeni ilan geldiğinde bildirim alacaksın.'))
+      .catch(() => Alert.alert('Hata', 'Arama kaydedilemedi, tekrar dene.'));
   };
 
   const handleClearFilters = () => {
@@ -219,6 +240,9 @@ export default function ListingListScreen({ navigation }: Props) {
                 style={styles.searchInput}
                 returnKeyType="search"
               />
+              <Pressable onPress={handleSaveSearch} hitSlop={8}>
+                <Ionicons name="bookmark-outline" size={18} color={colors.textMuted} />
+              </Pressable>
             </View>
 
             <ScrollView
@@ -283,6 +307,18 @@ export default function ListingListScreen({ navigation }: Props) {
                 <Ionicons name="close" size={22} color={colors.textMuted} />
               </Pressable>
             </View>
+
+            <Pressable
+              style={styles.savedSearchesLink}
+              onPress={() => {
+                setFilterModalVisible(false);
+                if (requireAuth()) navigation.navigate('SavedSearches');
+              }}
+            >
+              <Ionicons name="bookmark" size={15} color={colors.primary} />
+              <Text style={styles.savedSearchesLinkText}>Kayıtlı Aramalarım</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textFaint} />
+            </Pressable>
 
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.filterSectionLabel}>Konum</Text>
@@ -490,6 +526,22 @@ function createStyles(colors: ColorPalette) {
     filterTitle: {
       ...typography.title3,
       color: colors.text,
+    },
+    savedSearchesLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      marginBottom: spacing.sm,
+    },
+    savedSearchesLinkText: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.primaryDark,
+      flex: 1,
     },
     filterSectionLabel: {
       ...typography.footnote,

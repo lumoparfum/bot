@@ -24,6 +24,7 @@ export type Listing = {
   sellerPhotoURL: string | null;
   createdAt: number;
   status: ListingStatus;
+  viewCount: number;
 };
 
 export const categories = [
