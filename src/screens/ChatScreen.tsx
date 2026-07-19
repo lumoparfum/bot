@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { IconButton } from '../components/IconButton';
 import { OfferModal } from '../components/OfferModal';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -97,9 +98,9 @@ export default function ChatScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
-        </Pressable>
+        <IconButton onPress={() => navigation.goBack()} accessibilityLabel="Geri">
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
+        </IconButton>
         <Pressable style={styles.headerIdentity} onPress={openOtherProfile}>
           {otherUserPhoto ? (
             <Image source={{ uri: otherUserPhoto }} style={styles.avatar} />

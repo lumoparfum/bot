@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandMark } from '../components/BrandMark';
 import { CategoryChip } from '../components/CategoryChip';
+import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -254,19 +255,19 @@ export default function ListingListScreen({ navigation }: Props) {
                 <Text style={styles.brandText}>Stop82</Text>
               </View>
               <View style={styles.topBarActions}>
-                <Pressable style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
+                <IconButton onPress={() => setFilterModalVisible(true)} accessibilityLabel="Filtrele">
                   <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}
-                </Pressable>
-                <Pressable
-                  style={styles.iconButton}
+                </IconButton>
+                <IconButton
                   onPress={() => {
                     if (requireAuth()) navigation.navigate('Notifications');
                   }}
+                  accessibilityLabel="Bildirimler"
                 >
                   <Ionicons name="notifications-outline" size={20} color={colors.text} />
                   {unreadNotifications > 0 && <View style={styles.activeDot} />}
-                </Pressable>
+                </IconButton>
               </View>
             </View>
 
@@ -501,14 +502,6 @@ function createStyles(colors: ColorPalette) {
     topBarActions: {
       flexDirection: 'row',
       gap: spacing.sm,
-    },
-    iconButton: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     activeDot: {
       position: 'absolute',
