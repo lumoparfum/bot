@@ -71,6 +71,7 @@ export default function ListingListScreen({ navigation }: Props) {
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
+  const [locationFilterActive, setLocationFilterActive] = useState(false);
   const [selectedRadius, setSelectedRadius] = useState<number | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
 
@@ -79,7 +80,7 @@ export default function ListingListScreen({ navigation }: Props) {
   const [maxPrice, setMaxPrice] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const hasActiveFilters =
-    sortOption !== 'newest' || minPrice !== '' || maxPrice !== '' || selectedRadius !== null;
+    sortOption !== 'newest' || minPrice !== '' || maxPrice !== '' || locationFilterActive;
 
   const loadListings = useCallback(async () => {
     try {
@@ -119,13 +120,18 @@ export default function ListingListScreen({ navigation }: Props) {
 
   const handleRadiusPress = (km: number | null) => {
     setSelectedRadius(km);
-    if (km !== null && !userLocation) {
-      setPickerVisible(true);
+    if (km !== null) {
+      if (!userLocation) {
+        setPickerVisible(true);
+        return;
+      }
+      setLocationFilterActive(true);
     }
   };
 
   const handleLocationSelect = (location: ListingLocation) => {
     setLocationLabel(location.label);
+    setLocationFilterActive(true);
     if (location.latitude != null && location.longitude != null) {
       setUserLocation({ latitude: location.latitude, longitude: location.longitude });
     }
@@ -153,6 +159,7 @@ export default function ListingListScreen({ navigation }: Props) {
     setMinPrice('');
     setMaxPrice('');
     setSelectedRadius(null);
+    setLocationFilterActive(false);
   };
 
   const rows = useMemo(() => {
@@ -173,10 +180,24 @@ export default function ListingListScreen({ navigation }: Props) {
       .filter(({ listing, distance }) => {
         const matchesCategory = selectedCategory === ALL || listing.category === selectedCategory;
         const matchesQuery = listing.title.toLowerCase().includes(query.trim().toLowerCase());
-        const matchesRadius = selectedRadius === null || (distance !== null && distance <= selectedRadius);
         const matchesMin = min === null || listing.price >= min;
         const matchesMax = max === null || listing.price <= max;
-        return matchesCategory && matchesQuery && matchesRadius && matchesMin && matchesMax;
+
+        let matchesLocation = true;
+        if (locationFilterActive) {
+          if (selectedRadius !== null) {
+            // Km secilmisse tam mesafeye gore filtrele.
+            matchesLocation = distance !== null && distance <= selectedRadius;
+          } else {
+            // Km secilmemisse ("Tumu") sehir adina gore filtrele - kullanici
+            // sadece il/ilce bazinda arayabilsin, kesin mesafe sart olmasin.
+            const cityQuery = locationLabel?.split(',').pop()?.trim().toLocaleLowerCase('tr-TR');
+            matchesLocation = !cityQuery
+              || listing.location.label.toLocaleLowerCase('tr-TR').includes(cityQuery);
+          }
+        }
+
+        return matchesCategory && matchesQuery && matchesLocation && matchesMin && matchesMax;
       })
       .sort((a, b) => {
         switch (sortOption) {
@@ -194,7 +215,18 @@ export default function ListingListScreen({ navigation }: Props) {
             return b.listing.createdAt - a.listing.createdAt;
         }
       });
-  }, [listings, selectedCategory, query, selectedRadius, userLocation, sortOption, minPrice, maxPrice]);
+  }, [
+    listings,
+    selectedCategory,
+    query,
+    selectedRadius,
+    userLocation,
+    locationFilterActive,
+    locationLabel,
+    sortOption,
+    minPrice,
+    maxPrice,
+  ]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -327,28 +359,44 @@ export default function ListingListScreen({ navigation }: Props) {
 
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.filterSectionLabel}>Konum</Text>
-              <View style={styles.locationSection}>
-                <Pressable style={styles.locationChip} onPress={() => setPickerVisible(true)}>
-                  <Ionicons name="location" size={14} color={colors.primary} />
-                  <Text style={styles.locationChipText} numberOfLines={1}>
-                    {locationLabel ?? 'Konum Seç'}
-                  </Text>
-                </Pressable>
-                <View style={styles.sortOptions}>
+              <Pressable
+                style={[styles.locationRow, locationFilterActive && styles.locationRowActive]}
+                onPress={() => setPickerVisible(true)}
+              >
+                <Ionicons
+                  name="location-outline"
+                  size={18}
+                  color={locationFilterActive ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  style={[styles.locationRowText, !locationLabel && styles.locationRowPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {locationLabel ?? 'Konum seç (GPS veya şehir)'}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+              </Pressable>
+              <Text style={styles.locationHint}>
+                {locationFilterActive
+                  ? selectedRadius !== null
+                    ? `${selectedRadius} km yarıçapındaki ilanlar gösteriliyor`
+                    : 'Sadece bu şehirdeki ilanlar gösteriliyor'
+                  : 'Bir şehir seçip filtreleyebilir, istersen km ile daraltabilirsin'}
+              </Text>
+              <View style={[styles.sortOptions, styles.radiusOptions]}>
+                <CategoryChip
+                  label={ALL}
+                  selected={selectedRadius === null}
+                  onPress={() => handleRadiusPress(null)}
+                />
+                {DISTANCE_FILTERS.map((km) => (
                   <CategoryChip
-                    label={ALL}
-                    selected={selectedRadius === null}
-                    onPress={() => handleRadiusPress(null)}
+                    key={km}
+                    label={`${km} km`}
+                    selected={selectedRadius === km}
+                    onPress={() => handleRadiusPress(km)}
                   />
-                  {DISTANCE_FILTERS.map((km) => (
-                    <CategoryChip
-                      key={km}
-                      label={`${km} km`}
-                      selected={selectedRadius === km}
-                      onPress={() => handleRadiusPress(km)}
-                    />
-                  ))}
-                </View>
+                ))}
               </View>
 
               <Text style={styles.filterSectionLabel}>Sıralama</Text>
@@ -477,23 +525,36 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.sm,
       paddingBottom: spacing.sm,
     },
-    locationChip: {
+    locationRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
+      gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primaryLight,
-      alignSelf: 'flex-start',
+      paddingVertical: spacing.md,
+    },
+    locationRowActive: {
+      borderColor: colors.primary,
+    },
+    locationRowText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    locationRowPlaceholder: {
+      color: colors.textFaint,
+      fontWeight: '400',
+    },
+    locationHint: {
+      ...typography.caption,
+      color: colors.textFaint,
+      marginTop: spacing.xs,
       marginBottom: spacing.sm,
     },
-    locationChipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.primaryDark,
-    },
-    locationSection: {
+    radiusOptions: {
       marginBottom: spacing.sm,
     },
     emptyState: {
