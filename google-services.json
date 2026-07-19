@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "83899072995",
+    "project_id": "stop82-d19c6",
+    "storage_bucket": "stop82-d19c6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:83899072995:android:fa356d8e15b241359b60d6",
+        "android_client_info": {
+          "package_name": "com.stop82.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "83899072995-1jhtdimcij1hkeg0kjek2m2u83gq4pfp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPUOZd9HTgBl-uGp43VBMP9cQr_7FXiuI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "83899072995-1jhtdimcij1hkeg0kjek2m2u83gq4pfp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

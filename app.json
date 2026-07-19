@@ -8,15 +8,21 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#1A2238",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.stop82.app"
     },
     "android": {
+      "package": "com.stop82.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#1A2238",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,7 +42,16 @@
         {
           "photosPermission": "Stop82'nin ilanına fotoğraf ekleyebilmesi için galerine erişmesi gerekiyor."
         }
-      ]
-    ]
+      ],
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c0648885-e62f-42d4-aaae-4954e84fc8cc"
+      }
+    },
+    "owner": "toraman"
   }
 }

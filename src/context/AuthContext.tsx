@@ -1,29 +1,39 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
+import { signOutUser } from '../services/authService';
 
 type AuthContextValue = {
   isAuthenticated: boolean;
-  phoneNumber: string | null;
-  signIn: (phoneNumber: string) => void;
-  signOut: () => void;
+  user: User | null;
+  initializing: boolean;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Holds auth state in memory only. Real Firebase phone-auth verification
-// isn't wired yet (see src/services/authService.ts) — once it is, signIn
-// should be called with the verified Firebase user instead of a raw string.
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setInitializing(false);
+    });
+    return unsubscribe;
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated: phoneNumber !== null,
-      phoneNumber,
-      signIn: (phone: string) => setPhoneNumber(phone),
-      signOut: () => setPhoneNumber(null),
+      isAuthenticated: user !== null,
+      user,
+      initializing,
+      signOut: signOutUser,
     }),
-    [phoneNumber]
+    [user, initializing]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

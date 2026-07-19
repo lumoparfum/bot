@@ -1,18 +1,26 @@
-import type { ApplicationVerifier, ConfirmationResult } from 'firebase/auth';
-import { signInWithPhoneNumber } from 'firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider, signInWithCredential, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from './firebase';
 
-// TODO: sendOtp needs a reCAPTCHA-compatible ApplicationVerifier to actually
-// call Firebase. Decide how phone verification will run on native (custom
-// WebView reCAPTCHA vs. @react-native-firebase/auth) before wiring this up
-// from AuthScreen.
-export function sendOtp(
-  phoneNumber: string,
-  verifier: ApplicationVerifier
-): Promise<ConfirmationResult> {
-  return signInWithPhoneNumber(auth, phoneNumber, verifier);
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
+
+export async function signInWithGoogle() {
+  await GoogleSignin.hasPlayServices();
+  const response = await GoogleSignin.signIn();
+  if (response.type !== 'success' || !response.data.idToken) {
+    throw new Error('Google girişi tamamlanamadı.');
+  }
+  const credential = GoogleAuthProvider.credential(response.data.idToken);
+  return signInWithCredential(auth, credential);
 }
 
-export function confirmOtp(confirmation: ConfirmationResult, code: string) {
-  return confirmation.confirm(code);
+export async function signOutUser() {
+  try {
+    await GoogleSignin.signOut();
+  } catch {
+    // Kullanıcı Google ile giriş yapmadıysa (ör. ileride Apple ile girdiyse) sorun değil.
+  }
+  await firebaseSignOut(auth);
 }

@@ -1,127 +1,67 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { BrandMark } from '../components/BrandMark';
-import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { useAuth } from '../context/AuthContext';
-import { colors, radius, spacing, typography } from '../constants/theme';
-
-type Step = 'phone' | 'otp';
-
-const PHONE_DIGITS_LENGTH = 10; // e.g. 5XX XXX XX XX, without the +90 prefix
-const OTP_LENGTH = 6;
+import { signInWithGoogle } from '../services/authService';
+import { colors, spacing, typography } from '../constants/theme';
 
 export default function AuthScreen() {
-  const { signIn } = useAuth();
-  const [step, setStep] = useState<Step>('phone');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isPhoneValid = phoneNumber.replace(/\D/g, '').length === PHONE_DIGITS_LENGTH;
-  const isCodeValid = code.length === OTP_LENGTH;
-
-  const handleSendCode = async () => {
-    if (!isPhoneValid) {
-      setError('Lütfen geçerli bir telefon numarası girin.');
-      return;
-    }
+  const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
     try {
-      // TODO: authService.sendOtp(`+90${digits}`, recaptchaVerifier) burada
-      // çağrılacak. reCAPTCHA doğrulayıcısı henüz bağlanmadı (bkz.
-      // src/services/authService.ts).
-      setStep('otp');
+      await signInWithGoogle();
+    } catch {
+      setError('Google ile giriş yapılamadı. Lütfen tekrar dene.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!isCodeValid) {
-      setError('Lütfen 6 haneli kodu girin.');
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      // TODO: authService.confirmOtp(confirmationResult, code) burada
-      // çağrılacak. Gerçek doğrulama bağlanana kadar girişi burada
-      // optimistik olarak tamamlıyoruz ki uygulamanın geri kalanı
-      // gezilebilsin.
-      signIn(`+90${phoneNumber.replace(/\D/g, '')}`);
-    } finally {
-      setLoading(false);
-    }
+  // TODO: Apple Developer üyeliği alınıp expo-apple-authentication
+  // yapılandırıldığında gerçek Apple ile giriş buraya bağlanacak.
+  const handleAppleSignIn = () => {
+    Alert.alert('Yakında', 'Apple ile giriş çok yakında aktif olacak.');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.brandBlock}>
           <BrandMark size={64} />
           <Text style={styles.title}>Stop82</Text>
+          <Text style={styles.subtitle}>İkinci el, ilk elden fırsat</Text>
         </View>
-        <Text style={styles.subtitle}>
-          {step === 'phone'
-            ? 'Kayıt Ol / Giriş Yap'
-            : `+90 ${phoneNumber} numarasına gönderilen kodu girin`}
-        </Text>
-
-        {step === 'phone' ? (
-          <View style={styles.field}>
-            <Text style={styles.label}>Telefon Numarası</Text>
-            <PrefixInput
-              prefix="+90"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              placeholder="5XX XXX XX XX"
-              keyboardType="phone-pad"
-              maxLength={13}
-            />
-          </View>
-        ) : (
-          <View style={styles.field}>
-            <Text style={styles.label}>Doğrulama Kodu</Text>
-            <TextInput
-              style={styles.otpInput}
-              placeholder="000000"
-              placeholderTextColor={colors.textFaint}
-              keyboardType="number-pad"
-              maxLength={OTP_LENGTH}
-              value={code}
-              onChangeText={setCode}
-            />
-          </View>
-        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <PrimaryButton
-          label={step === 'phone' ? 'Kod Gönder' : 'Doğrula'}
-          onPress={step === 'phone' ? handleSendCode : handleVerifyCode}
-          loading={loading}
-        />
+        <View style={styles.buttons}>
+          <PrimaryButton
+            label="Google ile Giriş Yap"
+            variant="outline"
+            onPress={handleGoogleSignIn}
+            loading={loading}
+            icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
+          />
+          {Platform.OS === 'ios' && (
+            <PrimaryButton
+              label="Apple ile Giriş Yap"
+              variant="navy"
+              onPress={handleAppleSignIn}
+              icon={<Ionicons name="logo-apple" size={18} color="#fff" />}
+            />
+          )}
+        </View>
 
-        {step === 'otp' && (
-          <Text
-            style={styles.changeNumber}
-            onPress={() => {
-              setStep('phone');
-              setCode('');
-              setError(null);
-            }}
-          >
-            Numarayı değiştir
-          </Text>
-        )}
+        <Text style={styles.terms}>
+          Devam ederek Stop82 Kullanım Şartları'nı kabul etmiş olursun.
+        </Text>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -138,7 +78,7 @@ const styles = StyleSheet.create({
   brandBlock: {
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xxl,
   },
   title: {
     ...typography.largeTitle,
@@ -147,28 +87,9 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.subhead,
     color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
   },
-  field: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    ...typography.footnote,
-    color: colors.textMuted,
-    marginBottom: spacing.xs,
-  },
-  otpInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 10,
-    color: colors.text,
-    textAlign: 'center',
+  buttons: {
+    gap: spacing.sm,
   },
   error: {
     color: colors.error,
@@ -176,11 +97,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textAlign: 'center',
   },
-  changeNumber: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
+  terms: {
+    ...typography.caption,
+    color: colors.textFaint,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
 });
