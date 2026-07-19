@@ -2,13 +2,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeStackNavigator from './HomeStackNavigator';
 import AddListingScreen from '../screens/AddListingScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import { colors, shadows } from '../constants/theme';
+import ProfileStackNavigator from './ProfileStackNavigator';
+import { shadows } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import type { MainTabParamList } from '../types/navigation';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
+  const { colors } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -52,7 +55,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStackNavigator}
         options={{
           title: 'Profilim',
           tabBarIcon: ({ color, size, focused }) => (

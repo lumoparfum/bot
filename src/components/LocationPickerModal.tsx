@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography } from '../constants/theme';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { TURKISH_CITIES, reverseGeocodeLabel, requestAndGetLocation, type City } from '../utils/location';
 import type { ListingLocation } from '../types/listing';
 
@@ -12,6 +13,8 @@ type Props = {
 };
 
 export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +85,8 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(26, 34, 56, 0.5)',
@@ -149,4 +153,5 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
   },
-});
+  });
+}

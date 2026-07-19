@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,7 +17,9 @@ import { BrandMark } from '../components/BrandMark';
 import { CategoryChip } from '../components/CategoryChip';
 import { ListingCard } from '../components/ListingCard';
 import { LocationPickerModal } from '../components/LocationPickerModal';
-import { colors, radius, spacing, typography } from '../constants/theme';
+import { PrimaryButton } from '../components/PrimaryButton';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { categories } from '../types/listing';
 import type { Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
@@ -25,9 +36,21 @@ import type { HomeStackParamList } from '../types/navigation';
 
 const ALL = 'Tümü';
 
+type SortOption = 'newest' | 'priceAsc' | 'priceDesc' | 'distance';
+
+const SORT_LABELS: Record<SortOption, string> = {
+  newest: 'En Yeni',
+  priceAsc: 'Fiyat: Düşük → Yüksek',
+  priceDesc: 'Fiyat: Yüksek → Düşük',
+  distance: 'Yakınıma Göre',
+};
+
 type Props = NativeStackScreenProps<HomeStackParamList, 'ListingList'>;
 
 export default function ListingListScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,6 +63,12 @@ export default function ListingListScreen({ navigation }: Props) {
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
   const [selectedRadius, setSelectedRadius] = useState<number | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const hasActiveFilters = sortOption !== 'newest' || minPrice !== '' || maxPrice !== '';
 
   const loadListings = useCallback(async () => {
     try {
@@ -91,7 +120,16 @@ export default function ListingListScreen({ navigation }: Props) {
     }
   };
 
+  const handleClearFilters = () => {
+    setSortOption('newest');
+    setMinPrice('');
+    setMaxPrice('');
+  };
+
   const rows = useMemo(() => {
+    const min = minPrice ? Number(minPrice) : null;
+    const max = maxPrice ? Number(maxPrice) : null;
+
     return listings
       .map((listing) => {
         const distance =
@@ -107,13 +145,27 @@ export default function ListingListScreen({ navigation }: Props) {
         const matchesCategory = selectedCategory === ALL || listing.category === selectedCategory;
         const matchesQuery = listing.title.toLowerCase().includes(query.trim().toLowerCase());
         const matchesRadius = selectedRadius === null || (distance !== null && distance <= selectedRadius);
-        return matchesCategory && matchesQuery && matchesRadius;
+        const matchesMin = min === null || listing.price >= min;
+        const matchesMax = max === null || listing.price <= max;
+        return matchesCategory && matchesQuery && matchesRadius && matchesMin && matchesMax;
       })
       .sort((a, b) => {
-        if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
-        return b.listing.createdAt - a.listing.createdAt;
+        switch (sortOption) {
+          case 'priceAsc':
+            return a.listing.price - b.listing.price;
+          case 'priceDesc':
+            return b.listing.price - a.listing.price;
+          case 'distance':
+            if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+            if (a.distance !== null) return -1;
+            if (b.distance !== null) return 1;
+            return b.listing.createdAt - a.listing.createdAt;
+          case 'newest':
+          default:
+            return b.listing.createdAt - a.listing.createdAt;
+        }
       });
-  }, [listings, selectedCategory, query, selectedRadius, userLocation]);
+  }, [listings, selectedCategory, query, selectedRadius, userLocation, sortOption, minPrice, maxPrice]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -132,8 +184,14 @@ export default function ListingListScreen({ navigation }: Props) {
                 <BrandMark size={32} />
                 <Text style={styles.brandText}>Stop82</Text>
               </View>
-              <View style={styles.bellButton}>
-                <Ionicons name="notifications-outline" size={20} color={colors.navy} />
+              <View style={styles.topBarActions}>
+                <Pressable style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
+                  <Ionicons name="options-outline" size={20} color={colors.navy} />
+                  {hasActiveFilters && <View style={styles.activeDot} />}
+                </Pressable>
+                <View style={styles.iconButton}>
+                  <Ionicons name="notifications-outline" size={20} color={colors.navy} />
+                </View>
               </View>
             </View>
 
@@ -223,96 +281,235 @@ export default function ListingListScreen({ navigation }: Props) {
         onClose={() => setPickerVisible(false)}
         onSelect={handleLocationSelect}
       />
+
+      <Modal
+        visible={filterModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.backdrop}>
+          <View style={styles.filterSheet}>
+            <View style={styles.filterHeader}>
+              <Text style={styles.filterTitle}>Filtrele & Sırala</Text>
+              <Pressable onPress={() => setFilterModalVisible(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.filterSectionLabel}>Sıralama</Text>
+            <View style={styles.sortOptions}>
+              {(Object.keys(SORT_LABELS) as SortOption[])
+                .filter((option) => option !== 'distance' || userLocation)
+                .map((option) => (
+                  <CategoryChip
+                    key={option}
+                    label={SORT_LABELS[option]}
+                    selected={sortOption === option}
+                    onPress={() => setSortOption(option)}
+                  />
+                ))}
+            </View>
+
+            <Text style={styles.filterSectionLabel}>Fiyat Aralığı</Text>
+            <View style={styles.priceRangeRow}>
+              <TextInput
+                style={styles.priceInput}
+                placeholder="Min ₺"
+                placeholderTextColor={colors.textFaint}
+                keyboardType="number-pad"
+                value={minPrice}
+                onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
+              />
+              <Text style={styles.priceRangeDash}>—</Text>
+              <TextInput
+                style={styles.priceInput}
+                placeholder="Max ₺"
+                placeholderTextColor={colors.textFaint}
+                keyboardType="number-pad"
+                value={maxPrice}
+                onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
+              />
+            </View>
+
+            <View style={styles.filterActions}>
+              <View style={styles.filterActionButton}>
+                <PrimaryButton label="Temizle" variant="outline" onPress={handleClearFilters} />
+              </View>
+              <View style={styles.filterActionButton}>
+                <PrimaryButton label="Uygula" onPress={() => setFilterModalVisible(false)} />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  columnWrapper: {
-    gap: spacing.md,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  brandText: {
-    ...typography.title3,
-    color: colors.navy,
-  },
-  bellButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    ...typography.title2,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    marginBottom: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-    padding: 0,
-  },
-  chipRow: {
-    gap: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  locationChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
-    maxWidth: 160,
-  },
-  locationChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primaryDark,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: spacing.xxl,
-    gap: spacing.sm,
-  },
-  emptyText: {
-    ...typography.subhead,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    listContent: {
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    columnWrapper: {
+      gap: spacing.md,
+    },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    brandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    brandText: {
+      ...typography.title3,
+      color: colors.navy,
+    },
+    topBarActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    iconButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activeDot: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+    },
+    title: {
+      ...typography.title2,
+      color: colors.text,
+      marginBottom: spacing.md,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 12,
+      marginBottom: spacing.md,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+      padding: 0,
+    },
+    chipRow: {
+      gap: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    locationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primaryLight,
+      maxWidth: 160,
+    },
+    locationChipText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primaryDark,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: spacing.xxl,
+      gap: spacing.sm,
+    },
+    emptyText: {
+      ...typography.subhead,
+      color: colors.textMuted,
+      textAlign: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(26, 34, 56, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    filterSheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xl,
+    },
+    filterHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    filterTitle: {
+      ...typography.title3,
+      color: colors.text,
+    },
+    filterSectionLabel: {
+      ...typography.footnote,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    sortOptions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    priceRangeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    priceInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      fontSize: 16,
+      color: colors.text,
+    },
+    priceRangeDash: {
+      color: colors.textFaint,
+      fontSize: 16,
+    },
+    filterActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xl,
+    },
+    filterActionButton: {
+      flex: 1,
+    },
+  });
+}

@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radius, spacing } from '../constants/theme';
+import { radius, spacing, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   label: string;
@@ -8,6 +10,9 @@ type Props = {
 };
 
 export function CategoryChip({ label, selected, onPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Pressable
       onPress={onPress}
@@ -22,28 +27,30 @@ export function CategoryChip({ label, selected, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipPressed: {
-    backgroundColor: colors.surfaceAlt,
-  },
-  chipSelected: {
-    backgroundColor: colors.navy,
-    borderColor: colors.navy,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  labelSelected: {
-    color: '#fff',
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    chip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipPressed: {
+      backgroundColor: colors.surfaceAlt,
+    },
+    chipSelected: {
+      backgroundColor: colors.navy,
+      borderColor: colors.navy,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    labelSelected: {
+      color: '#fff',
+    },
+  });
+}

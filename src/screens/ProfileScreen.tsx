@@ -1,23 +1,31 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { colors, radius, shadows, spacing, typography } from '../constants/theme';
+import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { fetchFavoriteListings, fetchListingsBySeller } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
 import type { Listing } from '../types/listing';
-import type { MainTabParamList } from '../types/navigation';
+import type { MainTabParamList, ProfileStackParamList } from '../types/navigation';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<ProfileStackParamList, 'ProfileHome'>,
+  BottomTabScreenProps<MainTabParamList>
+>;
 type Segment = 'mine' | 'favorites';
 
 export default function ProfileScreen({ navigation }: Props) {
-  const { user, signOut } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuth();
   const [segment, setSegment] = useState<Segment>('mine');
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<Listing[]>([]);
@@ -60,6 +68,13 @@ export default function ProfileScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View>
+            <View style={styles.topBar}>
+              <Text style={styles.topBarTitle}>Profilim</Text>
+              <IconButton onPress={() => navigation.navigate('Settings')} accessibilityLabel="Ayarlar">
+                <Ionicons name="settings-outline" size={19} color={colors.text} />
+              </IconButton>
+            </View>
+
             <View style={styles.header}>
               {user?.photoURL ? (
                 <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
@@ -87,11 +102,13 @@ export default function ProfileScreen({ navigation }: Props) {
                 label="İlanlarım"
                 active={segment === 'mine'}
                 onPress={() => setSegment('mine')}
+                styles={styles}
               />
               <SegmentButton
                 label="Favorilerim"
                 active={segment === 'favorites'}
                 onPress={() => setSegment('favorites')}
+                styles={styles}
               />
             </View>
           </View>
@@ -115,11 +132,6 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           )
         }
-        ListFooterComponent={
-          <View style={styles.signOutWrap}>
-            <PrimaryButton label="Çıkış Yap" variant="outline" onPress={signOut} />
-          </View>
-        }
       />
     </SafeAreaView>
   );
@@ -129,10 +141,12 @@ function SegmentButton({
   label,
   active,
   onPress,
+  styles,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable
@@ -144,97 +158,106 @@ function SegmentButton({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  columnWrapper: {
-    gap: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.surface,
-  },
-  avatarText: {
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 24,
-  },
-  headerText: {
-    flex: 1,
-    gap: 2,
-  },
-  name: {
-    ...typography.title3,
-    color: colors.text,
-  },
-  email: {
-    ...typography.subhead,
-    color: colors.textMuted,
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 4,
-    marginBottom: spacing.lg,
-  },
-  segmentButton: {
-    flex: 1,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  segmentButtonActive: {
-    backgroundColor: colors.background,
-    ...shadows.card,
-  },
-  segmentLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  segmentLabelActive: {
-    color: colors.text,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: spacing.xl,
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  emptyText: {
-    ...typography.subhead,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  loading: {
-    marginTop: spacing.xl,
-  },
-  signOutWrap: {
-    marginTop: spacing.lg,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    listContent: {
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    columnWrapper: {
+      gap: spacing.md,
+    },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: spacing.sm,
+    },
+    topBarTitle: {
+      ...typography.title2,
+      color: colors.text,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg,
+    },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.navy,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarImage: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.surface,
+    },
+    avatarText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: 24,
+    },
+    headerText: {
+      flex: 1,
+      gap: 2,
+    },
+    name: {
+      ...typography.title3,
+      color: colors.text,
+    },
+    email: {
+      ...typography.subhead,
+      color: colors.textMuted,
+    },
+    segmentRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: 4,
+      marginBottom: spacing.lg,
+    },
+    segmentButton: {
+      flex: 1,
+      borderRadius: radius.sm,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+    },
+    segmentButtonActive: {
+      backgroundColor: colors.background,
+      ...shadows.card,
+    },
+    segmentLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    segmentLabelActive: {
+      color: colors.text,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: spacing.xl,
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+    },
+    emptyText: {
+      ...typography.subhead,
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
+    loading: {
+      marginTop: spacing.xl,
+    },
+  });
+}

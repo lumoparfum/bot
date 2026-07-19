@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BrandMark } from '../components/BrandMark';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { signInWithGoogle } from '../services/authService';
-import { colors, spacing, typography } from '../constants/theme';
+import { spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function AuthScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,42 +68,44 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  brandBlock: {
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xxl,
-  },
-  title: {
-    ...typography.largeTitle,
-    color: colors.navy,
-  },
-  subtitle: {
-    ...typography.subhead,
-    color: colors.textMuted,
-  },
-  buttons: {
-    gap: spacing.sm,
-  },
-  error: {
-    color: colors.error,
-    fontSize: 13,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  terms: {
-    ...typography.caption,
-    color: colors.textFaint,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    brandBlock: {
+      alignItems: 'center',
+      gap: spacing.md,
+      marginBottom: spacing.xxl,
+    },
+    title: {
+      ...typography.largeTitle,
+      color: colors.navy,
+    },
+    subtitle: {
+      ...typography.subhead,
+      color: colors.textMuted,
+    },
+    buttons: {
+      gap: spacing.sm,
+    },
+    error: {
+      color: colors.error,
+      fontSize: 13,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    terms: {
+      ...typography.caption,
+      color: colors.textFaint,
+      textAlign: 'center',
+      marginTop: spacing.lg,
+    },
+  });
+}

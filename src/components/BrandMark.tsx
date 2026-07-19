@@ -1,6 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, shadows } from '../constants/theme';
+import { lightColors as colors, shadows } from '../constants/theme';
+
+// Marka mührü (logo) kasıtlı olarak sabit renklerle çiziliyor — koyu temada
+// bile lacivert kutu + turuncu "82" kombinasyonu okunur kalıyor, marka
+// kimliği tema değişse de sabit kalmalı.
 
 type Props = {
   size?: number;

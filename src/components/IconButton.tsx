@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
-import { colors, shadows } from '../constants/theme';
+import { shadows, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   children: ReactNode;
@@ -17,6 +19,9 @@ export function IconButton({
   size = 38,
   accessibilityLabel,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Pressable
       onPress={onPress}
@@ -35,19 +40,21 @@ export function IconButton({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  light: {
-    backgroundColor: colors.background,
-    ...shadows.card,
-  },
-  translucent: {
-    backgroundColor: 'rgba(26, 34, 56, 0.45)',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    base: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    light: {
+      backgroundColor: colors.background,
+      ...shadows.card,
+    },
+    translucent: {
+      backgroundColor: 'rgba(26, 34, 56, 0.45)',
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+  });
+}

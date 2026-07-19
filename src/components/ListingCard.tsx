@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, shadows, spacing, typography } from '../constants/theme';
+import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import { useFavorites } from '../context/FavoritesContext';
 import type { Listing } from '../types/listing';
@@ -13,6 +15,8 @@ type Props = {
 };
 
 export function ListingCard({ listing, onPress, distanceLabel }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(listing.id);
 
@@ -59,57 +63,59 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    ...shadows.card,
-  },
-  cardPressed: {
-    opacity: 0.9,
-  },
-  imageWrap: {
-    aspectRatio: 1,
-    backgroundColor: colors.surface,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  favoriteButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(26, 34, 56, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    padding: spacing.sm,
-    gap: 2,
-  },
-  title: {
-    ...typography.subhead,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  price: {
-    ...typography.headline,
-    color: colors.primary,
-    marginBottom: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      ...shadows.card,
+    },
+    cardPressed: {
+      opacity: 0.9,
+    },
+    imageWrap: {
+      aspectRatio: 1,
+      backgroundColor: colors.surface,
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+    },
+    favoriteButton: {
+      position: 'absolute',
+      top: spacing.sm,
+      right: spacing.sm,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: 'rgba(26, 34, 56, 0.45)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    body: {
+      padding: spacing.sm,
+      gap: 2,
+    },
+    title: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    price: {
+      ...typography.headline,
+      color: colors.primary,
+      marginBottom: 2,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    metaText: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+  });
+}

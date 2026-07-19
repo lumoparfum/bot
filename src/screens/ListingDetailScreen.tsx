@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -14,7 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { colors, radius, shadows, spacing, typography } from '../constants/theme';
+import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import { fetchListingById } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +29,8 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'ListingDetail'>;
 
 export default function ListingDetailScreen({ route, navigation }: Props) {
   const { listingId } = route.params;
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -74,6 +79,19 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   // eklendiğinde burada tetiklenecek. Şimdilik demo geri bildirimi.
   const handleContact = (type: 'call' | 'message') => {
     Alert.alert(type === 'call' ? 'Arama' : 'Mesaj', 'Bu özellik yakında aktif olacak.');
+  };
+
+  const handleShare = () => {
+    Share.share({
+      message: `${listing.title} - ${formatPrice(listing.price)}\nStop82'de incele!`,
+    }).catch(() => {});
+  };
+
+  const openSellerProfile = () => {
+    navigation.navigate('SellerProfile', {
+      sellerId: listing.sellerId,
+      sellerName: listing.sellerName,
+    });
   };
 
   return (
@@ -143,7 +161,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
 
           <View style={styles.divider} />
 
-          <View style={styles.sellerRow}>
+          <Pressable style={styles.sellerRow} onPress={openSellerProfile}>
             {listing.sellerPhotoURL ? (
               <Image source={{ uri: listing.sellerPhotoURL }} style={styles.avatarImage} />
             ) : (
@@ -155,7 +173,8 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
               <Text style={styles.sellerName}>{listing.sellerName}</Text>
               <Text style={styles.sellerMeta}>Stop82 Üyesi</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
+          </Pressable>
 
           <View style={{ height: 100 }} />
         </View>
@@ -181,7 +200,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
               color={favorited ? colors.primary : '#fff'}
             />
           </IconButton>
-          <IconButton variant="translucent" onPress={() => {}} accessibilityLabel="Paylaş">
+          <IconButton variant="translucent" onPress={handleShare} accessibilityLabel="Paylaş">
             <Ionicons name="share-outline" size={19} color="#fff" />
           </IconButton>
         </View>
@@ -212,174 +231,177 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  noImage: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dots: {
-    position: 'absolute',
-    bottom: radius.xl + spacing.md,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
-  dotActive: {
-    backgroundColor: '#fff',
-    width: 16,
-  },
-  sheet: {
-    marginTop: -radius.xl,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  tag: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
-  tagText: {
-    ...typography.caption,
-    color: colors.navy,
-  },
-  title: {
-    ...typography.title2,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  price: {
-    ...typography.largeTitle,
-    color: colors.primary,
-    marginBottom: spacing.md,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.md,
-  },
-  metaText: {
-    ...typography.subhead,
-    color: colors.textMuted,
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.textFaint,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.divider,
-    marginVertical: spacing.lg,
-  },
-  sectionHeading: {
-    ...typography.headline,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    ...typography.body,
-    color: colors.textMuted,
-    lineHeight: 22,
-  },
-  sellerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-  },
-  avatarText: {
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 18,
-  },
-  sellerInfo: {
-    gap: 2,
-  },
-  sellerName: {
-    ...typography.headline,
-    color: colors.text,
-  },
-  sellerMeta: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  headerControls: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  headerRightControls: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  bottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    ...shadows.raised,
-  },
-  bottomBarButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  callButtonWrap: {
-    width: 110,
-  },
-  messageButtonWrap: {
-    flex: 1,
-  },
-  notFound: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  notFoundText: {
-    ...typography.headline,
-    color: colors.textMuted,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    noImage: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dots: {
+      position: 'absolute',
+      bottom: radius.xl + spacing.md,
+      alignSelf: 'center',
+      flexDirection: 'row',
+      gap: 6,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    dotActive: {
+      backgroundColor: '#fff',
+      width: 16,
+    },
+    sheet: {
+      marginTop: -radius.xl,
+      backgroundColor: colors.background,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    tag: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: radius.pill,
+    },
+    tagText: {
+      ...typography.caption,
+      color: colors.navy,
+    },
+    title: {
+      ...typography.title2,
+      color: colors.text,
+      marginBottom: spacing.xs,
+    },
+    price: {
+      ...typography.largeTitle,
+      color: colors.primary,
+      marginBottom: spacing.md,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: spacing.md,
+    },
+    metaText: {
+      ...typography.subhead,
+      color: colors.textMuted,
+    },
+    metaDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: colors.textFaint,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.divider,
+      marginVertical: spacing.lg,
+    },
+    sectionHeading: {
+      ...typography.headline,
+      color: colors.text,
+      marginBottom: spacing.sm,
+    },
+    description: {
+      ...typography.body,
+      color: colors.textMuted,
+      lineHeight: 22,
+    },
+    sellerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    avatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.navy,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarImage: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.surface,
+    },
+    avatarText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: 18,
+    },
+    sellerInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    sellerName: {
+      ...typography.headline,
+      color: colors.text,
+    },
+    sellerMeta: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+    headerControls: {
+      position: 'absolute',
+      left: spacing.md,
+      right: spacing.md,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    headerRightControls: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    bottomBar: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+      ...shadows.raised,
+    },
+    bottomBarButtons: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    callButtonWrap: {
+      width: 110,
+    },
+    messageButtonWrap: {
+      flex: 1,
+    },
+    notFound: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.md,
+      padding: spacing.lg,
+    },
+    notFoundText: {
+      ...typography.headline,
+      color: colors.textMuted,
+    },
+  });
+}

@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 
-export const colors = {
+export type ColorPalette = typeof lightColors;
+
+export const lightColors = {
   primary: '#FF6B35',
   primaryDark: '#E24E17',
   primaryLight: '#FFE4D6',
@@ -24,6 +26,32 @@ export const colors = {
   success: '#1FAA59',
   error: '#E4483A',
   warning: '#F5A623',
+};
+
+export const darkColors: ColorPalette = {
+  primary: '#FF7A47',
+  primaryDark: '#FF6B35',
+  primaryLight: '#3A2418',
+
+  navy: '#2A3455',
+  navyLight: '#3A4568',
+
+  background: '#12151F',
+  surface: '#1B1F2C',
+  surfaceAlt: '#242A3A',
+
+  border: '#2C3242',
+  divider: '#262C3B',
+
+  text: '#F2F3F7',
+  textMuted: '#9AA3B8',
+  textFaint: '#6B7386',
+  textOnPrimary: '#FFFFFF',
+  textOnNavy: '#FFFFFF',
+
+  success: '#34C77B',
+  error: '#FF6B60',
+  warning: '#F7B84B',
 };
 
 export const spacing = {
@@ -58,13 +86,14 @@ export const typography = {
 };
 
 // Soft, native-feeling elevation. Spread across shadow* (iOS) and elevation
-// (Android) since RN doesn't unify the two.
+// (Android) since RN doesn't unify the two. Kept identical across themes —
+// shadows read fine on both light and dark surfaces at this opacity.
 export const shadows = {
   card: Platform.select({
     ios: {
-      shadowColor: '#141B33',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.08,
+      shadowOpacity: 0.16,
       shadowRadius: 16,
     },
     android: { elevation: 3 },
@@ -72,9 +101,9 @@ export const shadows = {
   }),
   raised: Platform.select({
     ios: {
-      shadowColor: '#141B33',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.14,
+      shadowOpacity: 0.22,
       shadowRadius: 24,
     },
     android: { elevation: 8 },

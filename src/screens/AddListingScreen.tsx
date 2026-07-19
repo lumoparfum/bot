@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -19,7 +19,8 @@ import { CategoryChip } from '../components/CategoryChip';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { colors, radius, spacing, typography } from '../constants/theme';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { categories, conditions, type ListingCondition, type ListingLocation } from '../types/listing';
 import { createListing } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,8 @@ const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: 
 type Props = BottomTabScreenProps<MainTabParamList, 'AddListing'>;
 
 export default function AddListingScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -238,7 +241,8 @@ export default function AddListingScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -356,4 +360,5 @@ const styles = StyleSheet.create({
   publishButton: {
     marginTop: spacing.xl,
   },
-});
+  });
+}

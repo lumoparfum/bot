@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
-import { colors, radius, spacing } from '../constants/theme';
+import { radius, spacing, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Variant = 'primary' | 'outline' | 'navy';
 
@@ -14,6 +16,8 @@ type Props = {
 };
 
 export function PrimaryButton({ label, onPress, disabled, loading, variant = 'primary', icon }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isDisabled = disabled || loading;
 
   return (
@@ -40,42 +44,44 @@ export function PrimaryButton({ label, onPress, disabled, loading, variant = 'pr
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  outlinePressed: {
-    backgroundColor: colors.surface,
-  },
-  navy: {
-    backgroundColor: colors.navy,
-  },
-  buttonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  label: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  outlineLabel: {
-    color: colors.navy,
-  },
-});
+function createStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    outline: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    outlinePressed: {
+      backgroundColor: colors.surface,
+    },
+    navy: {
+      backgroundColor: colors.navy,
+    },
+    buttonPressed: {
+      backgroundColor: colors.primaryDark,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    label: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    outlineLabel: {
+      color: colors.navy,
+    },
+  });
+}
