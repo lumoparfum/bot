@@ -208,7 +208,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
           </Pressable>
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: isOwnListing ? spacing.xl : 100 + insets.bottom }} />
         </View>
       </ScrollView>
 

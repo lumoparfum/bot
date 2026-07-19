@@ -95,7 +95,11 @@ export function subscribeToConversations(
 ): Unsubscribe {
   const q = query(collection(db, 'conversations'), where('participantIds', 'array-contains', uid));
   return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => mapConversation(d.id, d.data()));
+    // Henuz hic mesaj gonderilmemis (sadece "Mesaj Gonder"e dokunulup acilmis)
+    // sohbetler listede "bos" olarak gorunmesin.
+    const list = snapshot.docs
+      .map((d) => mapConversation(d.id, d.data()))
+      .filter((c) => c.lastMessage !== '');
     list.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     callback(list);
   });
