@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { radius, spacing, typography, type ColorPalette } from '../constants/the
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useMessages } from '../context/MessagesContext';
+import { deleteConversationForUser } from '../services/chat';
 import { formatRelativeDate } from '../utils/format';
 import type { Conversation } from '../types/chat';
 import type { MessagesStackParamList } from '../types/navigation';
@@ -35,6 +36,18 @@ export default function ChatListScreen({ navigation }: Props) {
     });
   };
 
+  const handleDelete = (conversation: Conversation) => {
+    if (!user) return;
+    Alert.alert('Sohbeti Sil', 'Bu sohbet mesaj listenden kaldırılacak. Emin misin?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () => deleteConversationForUser(conversation.id, user.uid).catch(() => {}),
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
@@ -50,7 +63,11 @@ export default function ChatListScreen({ navigation }: Props) {
           const otherPhoto = isSeller ? item.buyerPhotoURL : item.sellerPhotoURL;
           const unread = user ? item.unreadCount[user.uid] ?? 0 : 0;
           return (
-            <Pressable style={styles.row} onPress={() => openChat(item)}>
+            <Pressable
+              style={styles.row}
+              onPress={() => openChat(item)}
+              onLongPress={() => handleDelete(item)}
+            >
               {item.listingImage ? (
                 <Image source={{ uri: item.listingImage }} style={styles.thumb} />
               ) : (

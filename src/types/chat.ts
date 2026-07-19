@@ -14,6 +14,7 @@ export type Conversation = {
   lastMessageAt: number;
   lastSenderId: string;
   unreadCount: Record<string, number>;
+  hiddenFor: string[];
 };
 
 export type ChatMessage = {

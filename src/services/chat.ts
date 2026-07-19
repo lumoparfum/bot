@@ -1,6 +1,8 @@
 import {
   Timestamp,
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -38,6 +40,7 @@ function mapConversation(id: string, data: DocumentData): Conversation {
     lastMessageAt: toMillis(data.lastMessageAt),
     lastSenderId: data.lastSenderId ?? '',
     unreadCount: data.unreadCount ?? {},
+    hiddenFor: data.hiddenFor ?? [],
   };
 }
 
@@ -84,6 +87,7 @@ export async function getOrCreateConversation(params: {
       lastMessageAt: serverTimestamp(),
       lastSenderId: '',
       unreadCount: { [params.buyerId]: 0, [params.sellerId]: 0 },
+      hiddenFor: [],
     });
   }
   return id;
@@ -96,10 +100,10 @@ export function subscribeToConversations(
   const q = query(collection(db, 'conversations'), where('participantIds', 'array-contains', uid));
   return onSnapshot(q, (snapshot) => {
     // Henuz hic mesaj gonderilmemis (sadece "Mesaj Gonder"e dokunulup acilmis)
-    // sohbetler listede "bos" olarak gorunmesin.
+    // sohbetler ve kullanicinin kendi listesinden sildigi sohbetler gorunmesin.
     const list = snapshot.docs
       .map((d) => mapConversation(d.id, d.data()))
-      .filter((c) => c.lastMessage !== '');
+      .filter((c) => c.lastMessage !== '' && !c.hiddenFor.includes(uid));
     list.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     callback(list);
   });
@@ -136,11 +140,20 @@ export async function sendMessage(
     lastMessageAt: serverTimestamp(),
     lastSenderId: senderId,
     [`unreadCount.${recipientId}`]: increment(1),
+    // Karsi taraf sohbeti daha once kendi listesinden sildiyse, yeni mesajla
+    // birlikte tekrar listesinde gorunsun.
+    hiddenFor: arrayRemove(recipientId),
   });
 }
 
 export async function markConversationRead(conversationId: string, uid: string): Promise<void> {
   await updateDoc(doc(db, 'conversations', conversationId), {
     [`unreadCount.${uid}`]: 0,
+  });
+}
+
+export async function deleteConversationForUser(conversationId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'conversations', conversationId), {
+    hiddenFor: arrayUnion(uid),
   });
 }
