@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +17,7 @@ import { IconButton } from '../components/IconButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { deleteAccount } from '../services/account';
 import { updateDisplayName } from '../services/authService';
 import { ensureUserProfile } from '../services/firestore';
 import {
@@ -35,6 +45,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [savingName, setSavingName] = useState(false);
   const [notifGranted, setNotifGranted] = useState<boolean | null>(null);
   const [notifCanAskAgain, setNotifCanAskAgain] = useState(true);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -87,6 +98,31 @@ export default function SettingsScreen({ navigation }: Props) {
   const handleCancelEditName = () => {
     setNameInput(user?.displayName ?? '');
     setEditingName(false);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Hesabını Sil',
+      'Bu işlem geri alınamaz. İlanların, favorilerin, mesajların ve tüm hesap bilgilerin kalıcı olarak silinecek. Emin misin?',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Hesabımı Sil',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await deleteAccount();
+              await signOut();
+            } catch {
+              Alert.alert('Hata', 'Hesap silinemedi. İnternet bağlantını kontrol edip tekrar dene.');
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -194,6 +230,18 @@ export default function SettingsScreen({ navigation }: Props) {
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.signOutLabel}>Çıkış Yap</Text>
         </Pressable>
+
+        <Pressable
+          style={styles.deleteAccountRow}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+        >
+          {deletingAccount ? (
+            <ActivityIndicator size="small" color={colors.textFaint} />
+          ) : (
+            <Text style={styles.deleteAccountLabel}>Hesabımı Kalıcı Olarak Sil</Text>
+          )}
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -275,6 +323,16 @@ function createStyles(colors: ColorPalette) {
       ...typography.body,
       fontWeight: '600',
       color: colors.error,
+    },
+    deleteAccountRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+    },
+    deleteAccountLabel: {
+      ...typography.caption,
+      color: colors.textFaint,
+      textDecorationLine: 'underline',
     },
   });
 }

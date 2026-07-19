@@ -1,8 +1,10 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
+const { getAuth } = require('firebase-admin/auth');
 
 initializeApp();
 const db = getFirestore();
@@ -162,6 +164,35 @@ exports.onNewListingMatchSavedSearches = onDocumentCreated(
     );
   }
 );
+
+exports.deleteAccount = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Önce giriş yapmalısın.');
+
+  const bucket = getStorage().bucket();
+
+  // Kullanicinin ilanlarini ve fotograflarini sil.
+  const listingsSnap = await db.collection('listings').where('sellerId', '==', uid).get();
+  await Promise.all(
+    listingsSnap.docs.map(async (docSnap) => {
+      await bucket.deleteFiles({ prefix: `listings/${docSnap.id}/` }).catch(() => {});
+      await docSnap.ref.delete();
+    })
+  );
+
+  // Kayitli aramalarini sil.
+  const searchesSnap = await db.collection('savedSearches').where('uid', '==', uid).get();
+  await Promise.all(searchesSnap.docs.map((docSnap) => docSnap.ref.delete()));
+
+  // Profil belgesini (favoriler, aldigi degerlendirmeler, bildirimler,
+  // contacts dahil) recursive olarak sil.
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+
+  // En son kimlik dogrulama hesabini sil - bundan sonra tekrar giris yapamaz.
+  await getAuth().deleteUser(uid);
+
+  return { success: true };
+});
 
 exports.cleanupExpiredListings = onSchedule(
   { schedule: 'every 24 hours', region: REGION },

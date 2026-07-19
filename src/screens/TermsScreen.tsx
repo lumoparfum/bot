@@ -47,7 +47,7 @@ const SECTIONS: Section[] = [
   },
   {
     heading: '9. Hesabını Silmek',
-    body: 'Hesabını ve verilerini silmemizi istersen Ayarlar > Çıkış Yap ile oturumu kapatabilir, verilerinin tamamen silinmesi için bize ulaşabilirsin.',
+    body: 'Ayarlar sayfasının en altındaki "Hesabımı Kalıcı Olarak Sil" seçeneğiyle hesabını ve tüm verilerini (ilanların, favorilerin, mesajların, değerlendirmelerin) anında ve kalıcı olarak silebilirsin. Bu işlem geri alınamaz.',
   },
   {
     heading: '10. Değişiklikler',
