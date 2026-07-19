@@ -11,6 +11,7 @@ import * as Notifications from 'expo-notifications';
 import { AuthProvider } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
 import { MessagesProvider } from './src/context/MessagesContext';
+import { NotificationsProvider } from './src/context/NotificationsContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import type { RootStackParamList } from './src/types/navigation';
@@ -76,7 +77,9 @@ export default function App() {
         <AuthProvider>
           <FavoritesProvider>
             <MessagesProvider>
-              <ThemedApp />
+              <NotificationsProvider>
+                <ThemedApp />
+              </NotificationsProvider>
             </MessagesProvider>
           </FavoritesProvider>
         </AuthProvider>

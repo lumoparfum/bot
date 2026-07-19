@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -24,6 +23,8 @@ import { useTheme } from '../context/ThemeContext';
 import { categories, categoryIcons } from '../types/listing';
 import type { Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
+import { useNotifications } from '../context/NotificationsContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import {
   DISTANCE_FILTERS,
   distanceKm,
@@ -50,6 +51,8 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'ListingList'>;
 
 export default function ListingListScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const { unreadCount: unreadNotifications } = useNotifications();
+  const requireAuth = useRequireAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [listings, setListings] = useState<Listing[]>([]);
@@ -194,9 +197,12 @@ export default function ListingListScreen({ navigation }: Props) {
                 </Pressable>
                 <Pressable
                   style={styles.iconButton}
-                  onPress={() => Alert.alert('Bildirimler', 'Bu özellik yakında aktif olacak.')}
+                  onPress={() => {
+                    if (requireAuth()) navigation.navigate('Notifications');
+                  }}
                 >
                   <Ionicons name="notifications-outline" size={20} color={colors.text} />
+                  {unreadNotifications > 0 && <View style={styles.activeDot} />}
                 </Pressable>
               </View>
             </View>

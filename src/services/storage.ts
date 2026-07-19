@@ -1,13 +1,13 @@
 import { Image } from 'react-native';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from 'firebase/storage';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { storage } from './firebase';
 
 // Tum ilan fotograflari tutarli olsun diye sabit bir uzun kenara indirip
-// dosya boyutu 100KB'i gecmeyene kadar kaliteyi kademeli dusuruyoruz.
+// dosya boyutu 50KB'i gecmeyene kadar kaliteyi kademeli dusuruyoruz.
 const TARGET_DIMENSION = 1080;
-const MAX_FILE_BYTES = 100 * 1024;
-const QUALITY_STEPS = [0.7, 0.55, 0.4, 0.28, 0.18];
+const MAX_FILE_BYTES = 50 * 1024;
+const QUALITY_STEPS = [0.7, 0.55, 0.4, 0.28, 0.18, 0.12, 0.08];
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -45,4 +45,10 @@ export async function uploadListingImages(listingId: string, localUris: string[]
     urls.push(await getDownloadURL(imageRef));
   }
   return urls;
+}
+
+export async function deleteListingImages(listingId: string): Promise<void> {
+  const folderRef = ref(storage, `listings/${listingId}`);
+  const result = await listAll(folderRef);
+  await Promise.all(result.items.map((item) => deleteObject(item).catch(() => {})));
 }

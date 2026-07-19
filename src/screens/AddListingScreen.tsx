@@ -27,7 +27,7 @@ import { createListing } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
 import type { MainTabParamList } from '../types/navigation';
 
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 4;
 const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: null };
 
 type Props = BottomTabScreenProps<MainTabParamList, 'AddListing'>;

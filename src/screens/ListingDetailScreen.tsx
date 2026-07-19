@@ -22,7 +22,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
-import { fetchListingById, markListingSold } from '../services/firestore';
+import { deleteListing, fetchListingById, markListingSold } from '../services/firestore';
 import { getOrCreateConversation } from '../services/chat';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -125,6 +125,24 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             setListing({ ...listing, status: 'sold' });
           } catch {
             Alert.alert('Hata', 'İşaretlenemedi, tekrar dene.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDelete = () => {
+    Alert.alert('İlanı Kaldır', 'Bu ilanı kalıcı olarak silmek istediğine emin misin?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteListing(listing.id);
+            navigation.goBack();
+          } catch {
+            Alert.alert('Hata', 'İlan silinemedi, tekrar dene.');
           }
         },
       },
@@ -240,19 +258,25 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </IconButton>
         <View style={styles.headerRightControls}>
-          <IconButton
-            variant="translucent"
-            onPress={() => {
-              if (requireAuth()) toggleFavorite(listing.id);
-            }}
-            accessibilityLabel={favorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-          >
-            <Ionicons
-              name={favorited ? 'heart' : 'heart-outline'}
-              size={19}
-              color={favorited ? colors.primary : '#fff'}
-            />
-          </IconButton>
+          {isOwnListing ? (
+            <IconButton variant="translucent" onPress={handleDelete} accessibilityLabel="İlanı Kaldır">
+              <Ionicons name="trash-outline" size={19} color="#fff" />
+            </IconButton>
+          ) : (
+            <IconButton
+              variant="translucent"
+              onPress={() => {
+                if (requireAuth()) toggleFavorite(listing.id);
+              }}
+              accessibilityLabel={favorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+            >
+              <Ionicons
+                name={favorited ? 'heart' : 'heart-outline'}
+                size={19}
+                color={favorited ? colors.primary : '#fff'}
+              />
+            </IconButton>
+          )}
           <IconButton variant="translucent" onPress={handleShare} accessibilityLabel="Paylaş">
             <Ionicons name="share-outline" size={19} color="#fff" />
           </IconButton>

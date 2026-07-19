@@ -16,7 +16,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 // Bu ekranlar kendi tam-ekran ust/alt kontrollerini cizdigi icin, uzerlerinde
 // asagida uygulamanin sekme cubugu ikinci bir alt bar gibi durup gorunumu
 // bozmasin diye tab bar'i gizliyoruz.
-const FULLSCREEN_ROUTES = new Set(['ListingDetail', 'SellerProfile', 'Chat', 'Settings']);
+const FULLSCREEN_ROUTES = new Set(['ListingDetail', 'SellerProfile', 'Chat', 'Settings', 'Notifications']);
 
 export default function MainTabNavigator() {
   const { colors } = useTheme();

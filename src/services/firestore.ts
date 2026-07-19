@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { db } from './firebase';
-import { uploadListingImages } from './storage';
+import { deleteListingImages, uploadListingImages } from './storage';
 import type { Listing, ListingCondition, ListingLocation } from '../types/listing';
 
 const listingsRef = collection(db, 'listings');
@@ -99,6 +99,7 @@ export async function fetchListingsBySeller(sellerId: string): Promise<Listing[]
 
 export async function deleteListing(id: string): Promise<void> {
   await deleteDoc(doc(db, 'listings', id));
+  await deleteListingImages(id).catch(() => {});
 }
 
 // Favoriler: users/{uid}/favorites/{listingId}
