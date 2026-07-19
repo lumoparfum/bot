@@ -21,7 +21,7 @@ import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { categories, conditions, type ListingCondition, type ListingLocation } from '../types/listing';
+import { categories, categoryIcons, conditions, type ListingCondition, type ListingLocation } from '../types/listing';
 import { createListing } from '../services/firestore';
 import { useAuth } from '../context/AuthContext';
 import type { MainTabParamList } from '../types/navigation';
@@ -174,6 +174,7 @@ export default function AddListingScreen({ navigation }: Props) {
               <CategoryChip
                 key={item}
                 label={item}
+                icon={categoryIcons[item]}
                 selected={item === category}
                 onPress={() => setCategory(item)}
               />

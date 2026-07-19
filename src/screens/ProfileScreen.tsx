@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +56,12 @@ export default function ProfileScreen({ navigation }: Props) {
     navigation.navigate('HomeTab', { screen: 'ListingDetail', params: { listingId } });
   };
 
+  const handleInvite = () => {
+    Share.share({
+      message: 'Stop82\'de ikinci el eşyalarını al-sat! Uygulamayı dene: https://stop82.app',
+    }).catch(() => {});
+  };
+
   const data = segment === 'mine' ? myListings : favorites;
 
   return (
@@ -70,9 +76,14 @@ export default function ProfileScreen({ navigation }: Props) {
           <View>
             <View style={styles.topBar}>
               <Text style={styles.topBarTitle}>Profilim</Text>
-              <IconButton onPress={() => navigation.navigate('Settings')} accessibilityLabel="Ayarlar">
-                <Ionicons name="settings-outline" size={19} color={colors.text} />
-              </IconButton>
+              <View style={styles.topBarActions}>
+                <IconButton onPress={handleInvite} accessibilityLabel="Arkadaşına Öner">
+                  <Ionicons name="person-add-outline" size={19} color={colors.text} />
+                </IconButton>
+                <IconButton onPress={() => navigation.navigate('Settings')} accessibilityLabel="Ayarlar">
+                  <Ionicons name="settings-outline" size={19} color={colors.text} />
+                </IconButton>
+              </View>
             </View>
 
             <View style={styles.header}>
@@ -180,6 +191,10 @@ function createStyles(colors: ColorPalette) {
     topBarTitle: {
       ...typography.title2,
       color: colors.text,
+    },
+    topBarActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
     },
     header: {
       flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -20,7 +21,7 @@ import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { categories } from '../types/listing';
+import { categories, categoryIcons } from '../types/listing';
 import type { Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
 import {
@@ -191,9 +192,12 @@ export default function ListingListScreen({ navigation }: Props) {
                   <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}
                 </Pressable>
-                <View style={styles.iconButton}>
+                <Pressable
+                  style={styles.iconButton}
+                  onPress={() => Alert.alert('Bildirimler', 'Bu özellik yakında aktif olacak.')}
+                >
                   <Ionicons name="notifications-outline" size={20} color={colors.text} />
-                </View>
+                </Pressable>
               </View>
             </View>
 
@@ -220,6 +224,7 @@ export default function ListingListScreen({ navigation }: Props) {
                 <CategoryChip
                   key={item}
                   label={item}
+                  icon={categoryIcons[item]}
                   selected={item === selectedCategory}
                   onPress={() => setSelectedCategory(item)}
                 />

@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   label: string;
+  icon?: keyof typeof Ionicons.glyphMap;
   selected?: boolean;
   onPress?: () => void;
 };
 
-export function CategoryChip({ label, selected, onPress }: Props) {
+export function CategoryChip({ label, icon, selected, onPress }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -22,6 +24,9 @@ export function CategoryChip({ label, selected, onPress }: Props) {
         pressed && !selected && styles.chipPressed,
       ]}
     >
+      {icon && (
+        <Ionicons name={icon} size={15} color={selected ? '#fff' : colors.textMuted} />
+      )}
       <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
     </Pressable>
   );
@@ -30,6 +35,9 @@ export function CategoryChip({ label, selected, onPress }: Props) {
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
     chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       borderRadius: radius.pill,

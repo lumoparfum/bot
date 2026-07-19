@@ -3,11 +3,11 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { storage } from './firebase';
 
-// Telefon kameraları 8-12MB'a kadar foto üretebiliyor — Firebase'e ham
-// haliyle atmak yerine önce uzun kenarı 1600px'e indirip JPEG %70 kaliteyle
-// sıkıştırıyoruz (genelde 200-400KB'a düşüyor).
-const MAX_DIMENSION = 1600;
-const COMPRESS_QUALITY = 0.7;
+// Tum ilan fotograflari tutarli olsun diye sabit bir uzun kenara indirip
+// dosya boyutu 100KB'i gecmeyene kadar kaliteyi kademeli dusuruyoruz.
+const TARGET_DIMENSION = 1080;
+const MAX_FILE_BYTES = 100 * 1024;
+const QUALITY_STEPS = [0.7, 0.55, 0.4, 0.28, 0.18];
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -15,30 +15,31 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   });
 }
 
-async function compressImage(uri: string): Promise<string> {
+async function compressImage(uri: string): Promise<Blob> {
   const { width, height } = await getImageSize(uri);
   const longestSide = Math.max(width, height);
-  const resizeAction =
-    longestSide > MAX_DIMENSION
-      ? width >= height
-        ? { resize: { width: MAX_DIMENSION } }
-        : { resize: { height: MAX_DIMENSION } }
-      : null;
+  const targetSide = Math.min(TARGET_DIMENSION, longestSide);
+  const resizeAction = width >= height ? { resize: { width: targetSide } } : { resize: { height: targetSide } };
 
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    resizeAction ? [resizeAction] : [],
-    { compress: COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG }
-  );
-  return result.uri;
+  let lastBlob: Blob | null = null;
+  for (const quality of QUALITY_STEPS) {
+    const result = await ImageManipulator.manipulateAsync(uri, [resizeAction], {
+      compress: quality,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    const blob = await (await fetch(result.uri)).blob();
+    if (blob.size <= MAX_FILE_BYTES) return blob;
+    lastBlob = blob;
+  }
+  // En dusuk kalitede bile 100KB'in ustundeyse (nadir, cok detayli foto),
+  // elimizdeki en kucuk sonucu kullan.
+  return lastBlob as Blob;
 }
 
 export async function uploadListingImages(listingId: string, localUris: string[]): Promise<string[]> {
   const urls: string[] = [];
   for (let i = 0; i < localUris.length; i++) {
-    const compressedUri = await compressImage(localUris[i]);
-    const response = await fetch(compressedUri);
-    const blob = await response.blob();
+    const blob = await compressImage(localUris[i]);
     const imageRef = ref(storage, `listings/${listingId}/${i}-${Date.now()}.jpg`);
     await uploadBytes(imageRef, blob);
     urls.push(await getDownloadURL(imageRef));
