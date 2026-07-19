@@ -1,0 +1,111 @@
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radius, shadows, spacing, typography } from '../constants/theme';
+import { formatPrice, formatRelativeDate, type Listing } from '../data/mockListings';
+
+type Props = {
+  listing: Listing;
+  onPress: () => void;
+};
+
+export function ListingCard({ listing, onPress }: Props) {
+  const [favorited, setFavorited] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
+      <View style={styles.imageWrap}>
+        <Image
+          source={{ uri: listing.images[0] }}
+          style={styles.image}
+          contentFit="cover"
+          transition={150}
+        />
+        <Pressable
+          hitSlop={8}
+          onPress={() => setFavorited((v) => !v)}
+          style={styles.favoriteButton}
+        >
+          <Ionicons
+            name={favorited ? 'heart' : 'heart-outline'}
+            size={16}
+            color={favorited ? colors.primary : '#fff'}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={1}>
+          {listing.title}
+        </Text>
+        <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+        <View style={styles.metaRow}>
+          <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {listing.location}
+          </Text>
+        </View>
+        <Text style={styles.metaText}>{formatRelativeDate(listing.createdAt)}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  cardPressed: {
+    opacity: 0.9,
+  },
+  imageWrap: {
+    aspectRatio: 1,
+    backgroundColor: colors.surface,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(26, 34, 56, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    padding: spacing.sm,
+    gap: 2,
+  },
+  title: {
+    ...typography.subhead,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  price: {
+    ...typography.headline,
+    color: colors.primary,
+    marginBottom: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+});
