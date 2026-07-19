@@ -3,6 +3,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
+import { MessagesProvider } from './src/context/MessagesContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import RootNavigator from './src/navigation/RootNavigator';
 
@@ -35,7 +36,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <FavoritesProvider>
-            <ThemedApp />
+            <MessagesProvider>
+              <ThemedApp />
+            </MessagesProvider>
           </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>

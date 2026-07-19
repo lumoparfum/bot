@@ -13,7 +13,9 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { FullscreenImageViewer } from '../components/FullscreenImageViewer';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -21,12 +23,16 @@ import { radius, shadows, spacing, typography, type ColorPalette } from '../cons
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import { fetchListingById } from '../services/firestore';
+import { getOrCreateConversation } from '../services/chat';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import type { Listing } from '../types/listing';
-import type { HomeStackParamList } from '../types/navigation';
+import type { HomeStackParamList, MainTabParamList } from '../types/navigation';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'ListingDetail'>;
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<HomeStackParamList, 'ListingDetail'>,
+  BottomTabScreenProps<MainTabParamList>
+>;
 
 export default function ListingDetailScreen({ route, navigation }: Props) {
   const { listingId } = route.params;
@@ -77,10 +83,33 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const isOwnListing = user?.uid === listing.sellerId;
   const favorited = isFavorite(listing.id);
 
-  // TODO: Gerçek mesajlaşma/arama akışı (bildirimler + sohbet ekranı)
-  // eklendiğinde burada tetiklenecek. Şimdilik demo geri bildirimi.
-  const handleContact = (type: 'call' | 'message') => {
-    Alert.alert(type === 'call' ? 'Arama' : 'Mesaj', 'Bu özellik yakında aktif olacak.');
+  const handleCall = () => {
+    Alert.alert('Arama', 'Bu özellik yakında aktif olacak.');
+  };
+
+  const handleMessage = async () => {
+    if (!user) return;
+    const conversationId = await getOrCreateConversation({
+      listingId: listing.id,
+      listingTitle: listing.title,
+      listingImage: listing.images[0] ?? null,
+      sellerId: listing.sellerId,
+      sellerName: listing.sellerName,
+      sellerPhotoURL: listing.sellerPhotoURL,
+      buyerId: user.uid,
+      buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
+      buyerPhotoURL: user.photoURL,
+    });
+    navigation.navigate('Messages', {
+      screen: 'Chat',
+      params: {
+        conversationId,
+        otherUserId: listing.sellerId,
+        otherUserName: listing.sellerName,
+        otherUserPhoto: listing.sellerPhotoURL,
+        listingTitle: listing.title,
+      },
+    });
   };
 
   const handleShare = () => {
@@ -216,14 +245,14 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
               <PrimaryButton
                 label="Ara"
                 variant="outline"
-                onPress={() => handleContact('call')}
+                onPress={handleCall}
                 icon={<Ionicons name="call-outline" size={18} color={colors.text} />}
               />
             </View>
             <View style={styles.messageButtonWrap}>
               <PrimaryButton
                 label="Mesaj Gönder"
-                onPress={() => handleContact('message')}
+                onPress={handleMessage}
                 icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
               />
             </View>

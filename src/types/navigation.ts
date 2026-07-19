@@ -11,9 +11,21 @@ export type ProfileStackParamList = {
   Settings: undefined;
 };
 
+export type MessagesStackParamList = {
+  ChatList: undefined;
+  Chat: {
+    conversationId: string;
+    otherUserId: string;
+    otherUserName: string;
+    otherUserPhoto: string | null;
+    listingTitle: string;
+  };
+};
+
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
   AddListing: undefined;
+  Messages: NavigatorScreenParams<MessagesStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 

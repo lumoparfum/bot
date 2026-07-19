@@ -3,9 +3,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeStackNavigator from './HomeStackNavigator';
 import AddListingScreen from '../screens/AddListingScreen';
+import MessagesStackNavigator from './MessagesStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import { shadows } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useMessages } from '../context/MessagesContext';
 import type { MainTabParamList } from '../types/navigation';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -13,6 +15,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 export default function MainTabNavigator() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { totalUnread } = useMessages();
 
   return (
     <Tab.Navigator
@@ -49,6 +52,21 @@ export default function MainTabNavigator() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'add-circle' : 'add-circle-outline'}
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStackNavigator}
+        options={{
+          title: 'Mesajlar',
+          tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
               color={color}
               size={size}
             />
