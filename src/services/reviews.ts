@@ -29,6 +29,13 @@ function mapReview(id: string, data: DocumentData): Review {
   };
 }
 
+// Sadece birbiriyle en az bir kere mesajlasmis (konusmus) kullanicilar
+// birbirini degerlendirebilir - fake/rastgele yorum onlemi.
+export async function hasContactWith(viewerId: string, otherUserId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'users', viewerId, 'contacts', otherUserId));
+  return snap.exists();
+}
+
 export async function fetchUserRatingSummary(uid: string): Promise<UserRatingSummary> {
   const snap = await getDoc(doc(db, 'users', uid));
   const data = snap.data();

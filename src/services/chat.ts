@@ -93,6 +93,19 @@ export async function getOrCreateConversation(params: {
       hiddenFor: [],
     });
   }
+
+  // Iki tarafin da birbirini degerlendirebilmesi icin "gercekten konustular"
+  // isareti - reviews kurali bu kayda bakiyor. If-bloğunun disinda cagriliyor
+  // ki bu guncellemeden once acilmis eski sohbetler icin de geriye donuk
+  // olusturulsun (idempotent, zaten varsa sessizce ustune yazar).
+  await Promise.all([
+    setDoc(doc(db, 'users', params.buyerId, 'contacts', params.sellerId), {
+      createdAt: serverTimestamp(),
+    }),
+    setDoc(doc(db, 'users', params.sellerId, 'contacts', params.buyerId), {
+      createdAt: serverTimestamp(),
+    }),
+  ]);
   return id;
 }
 

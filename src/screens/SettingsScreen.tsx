@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { IconButton } from '../components/IconButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -9,6 +10,12 @@ import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDisplayName } from '../services/authService';
 import { ensureUserProfile } from '../services/firestore';
+import {
+  getNotificationPermissionStatus,
+  openSystemNotificationSettings,
+  registerForPushNotificationsAsync,
+  savePushToken,
+} from '../services/notifications';
 import type { ProfileStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Settings'>;
@@ -26,6 +33,29 @@ export default function SettingsScreen({ navigation }: Props) {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(user?.displayName ?? '');
   const [savingName, setSavingName] = useState(false);
+  const [notifGranted, setNotifGranted] = useState<boolean | null>(null);
+  const [notifCanAskAgain, setNotifCanAskAgain] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      getNotificationPermissionStatus().then(({ granted, canAskAgain }) => {
+        setNotifGranted(granted);
+        setNotifCanAskAgain(canAskAgain);
+      });
+    }, [])
+  );
+
+  const handleEnableNotifications = async () => {
+    if (!notifCanAskAgain) {
+      openSystemNotificationSettings();
+      return;
+    }
+    const token = await registerForPushNotificationsAsync();
+    if (token && user) await savePushToken(user.uid, token);
+    const status = await getNotificationPermissionStatus();
+    setNotifGranted(status.granted);
+    setNotifCanAskAgain(status.canAskAgain);
+  };
 
   const handleSignOut = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkış yapmak istediğine emin misin?', [
@@ -85,6 +115,25 @@ export default function SettingsScreen({ navigation }: Props) {
               )}
             </Pressable>
           ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Bildirimler</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.rowLabel}>
+              {notifGranted === null
+                ? 'Kontrol ediliyor...'
+                : notifGranted
+                  ? 'Bildirimler açık'
+                  : 'Bildirimler kapalı'}
+            </Text>
+            {notifGranted === false && (
+              <Pressable onPress={handleEnableNotifications} hitSlop={8}>
+                <Text style={styles.enableLink}>Aç</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         <Text style={styles.sectionLabel}>Hesap</Text>
@@ -208,6 +257,11 @@ function createStyles(colors: ColorPalette) {
     rowValue: {
       ...typography.body,
       color: colors.textMuted,
+    },
+    enableLink: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.primary,
     },
     signOutRow: {
       flexDirection: 'row',

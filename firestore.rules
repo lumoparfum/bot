@@ -18,7 +18,17 @@ service cloud.firestore {
 
       match /reviews/{raterId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == raterId && raterId != userId;
+        // Sadece bu kullaniciyla en az bir kere mesajlasmis (contacts kaydi
+        // olan) kisiler degerlendirme birakabilir - rastgele/sahte yorum onlemi.
+        allow write: if request.auth != null && request.auth.uid == raterId && raterId != userId
+          && exists(/databases/$(database)/documents/users/$(raterId)/contacts/$(userId));
+      }
+
+      // Iki kullanici arasinda sohbet olustugunda her iki tarafin "contacts"
+      // listesine birbirini isaretleriz - sadece degerlendirme yetkisi icin.
+      match /contacts/{contactId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && (request.auth.uid == userId || request.auth.uid == contactId);
       }
 
       // Bildirimler sadece Cloud Functions (Admin SDK) tarafindan olusturulur,

@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -42,4 +42,19 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
 export async function savePushToken(uid: string, token: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { pushToken: token });
+}
+
+export async function getNotificationPermissionStatus(): Promise<{
+  granted: boolean;
+  canAskAgain: boolean;
+}> {
+  const result = await Notifications.getPermissionsAsync();
+  return { granted: result.status === 'granted', canAskAgain: result.canAskAgain };
+}
+
+// Android'de bir kere reddedilen bildirim izni genelde uygulama icinden
+// tekrar sorulamaz (canAskAgain=false) - bu durumda kullaniciyi sistem
+// ayarlarina yonlendirmek gerekir.
+export function openSystemNotificationSettings(): void {
+  Linking.openSettings();
 }

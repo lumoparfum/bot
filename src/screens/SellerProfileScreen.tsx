@@ -15,7 +15,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { fetchListingsBySeller } from '../services/firestore';
-import { fetchUserRatingSummary, fetchUserReviews, submitReview } from '../services/reviews';
+import { fetchUserRatingSummary, fetchUserReviews, hasContactWith, submitReview } from '../services/reviews';
 import { submitReport } from '../services/reports';
 import { formatRelativeDate } from '../utils/format';
 import type { Listing } from '../types/listing';
@@ -39,6 +39,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [canReview, setCanReview] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +48,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
         fetchListingsBySeller(sellerId),
         fetchUserReviews(sellerId),
         fetchUserRatingSummary(sellerId),
+        user ? hasContactWith(user.uid, sellerId).then(setCanReview) : Promise.resolve(),
       ]);
       setListings(listingResult);
       setReviews(reviewResult);
@@ -54,7 +56,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [sellerId]);
+  }, [sellerId, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,7 +69,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
   const averageRating = summary.ratingCount > 0 ? summary.ratingSum / summary.ratingCount : 0;
 
   const handleOpenRating = () => {
-    if (!requireAuth()) return;
+    if (!requireAuth() || !canReview) return;
     setRatingModalVisible(true);
   };
 
@@ -143,14 +145,20 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
 
               {!isOwnProfile && (
                 <>
-                  <View style={styles.rateButton}>
-                    <PrimaryButton
-                      label="Değerlendir"
-                      variant="outline"
-                      onPress={handleOpenRating}
-                      icon={<Ionicons name="star-outline" size={16} color={colors.text} />}
-                    />
-                  </View>
+                  {canReview ? (
+                    <View style={styles.rateButton}>
+                      <PrimaryButton
+                        label="Değerlendir"
+                        variant="outline"
+                        onPress={handleOpenRating}
+                        icon={<Ionicons name="star-outline" size={16} color={colors.text} />}
+                      />
+                    </View>
+                  ) : (
+                    <Text style={styles.reviewGateText}>
+                      Değerlendirebilmek için önce bu kullanıcıyla mesajlaşmalısın
+                    </Text>
+                  )}
                   <Pressable onPress={handleOpenReport} hitSlop={8} style={styles.reportLink}>
                     <Ionicons name="flag-outline" size={13} color={colors.textFaint} />
                     <Text style={styles.reportLinkText}>Kullanıcıyı Şikayet Et</Text>
@@ -299,6 +307,13 @@ function createStyles(colors: ColorPalette) {
     rateButton: {
       marginTop: spacing.md,
       minWidth: 160,
+    },
+    reviewGateText: {
+      ...typography.caption,
+      color: colors.textFaint,
+      textAlign: 'center',
+      marginTop: spacing.md,
+      paddingHorizontal: spacing.lg,
     },
     reportLink: {
       flexDirection: 'row',
