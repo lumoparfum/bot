@@ -138,6 +138,13 @@ export default function ListingListScreen({ navigation }: Props) {
     }
   };
 
+  const handleClearLocation = () => {
+    setLocationLabel(null);
+    setUserLocation(null);
+    setLocationFilterActive(false);
+    setSelectedRadius(null);
+  };
+
   const handleSaveSearch = () => {
     if (!requireAuth() || !user) return;
     if (!query.trim() && selectedCategory === ALL && !minPrice && !maxPrice) {
@@ -275,6 +282,11 @@ export default function ListingListScreen({ navigation }: Props) {
                 style={styles.searchInput}
                 returnKeyType="search"
               />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={18} color={colors.textFaint} />
+                </Pressable>
+              )}
               <Pressable onPress={handleSaveSearch} hitSlop={8}>
                 <Ionicons name="bookmark-outline" size={18} color={colors.textMuted} />
               </Pressable>
@@ -375,7 +387,13 @@ export default function ListingListScreen({ navigation }: Props) {
                 >
                   {locationLabel ?? 'Konum seç (GPS veya şehir)'}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+                {locationFilterActive ? (
+                  <Pressable onPress={handleClearLocation} hitSlop={8}>
+                    <Ionicons name="close-circle" size={18} color={colors.textFaint} />
+                  </Pressable>
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+                )}
               </Pressable>
               <Text style={styles.locationHint}>
                 {locationFilterActive
