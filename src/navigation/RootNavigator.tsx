@@ -9,7 +9,7 @@ import type { RootStackParamList } from '../types/navigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { isAuthenticated, initializing } = useAuth();
+  const { initializing } = useAuth();
   const { colors } = useTheme();
 
   if (initializing) {
@@ -20,13 +20,13 @@ export default function RootNavigator() {
     );
   }
 
+  // Giris yapmadan da gezinilebilsin (ilanlara bakma, arama vs.) - kimlik
+  // gerektiren aksiyonlar (mesaj, ilan verme, favori) tiklandiginda useRequireAuth
+  // bu ekrani modal olarak acar ve basarili girişte kendini kapatir.
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
-      ) : (
-        <Stack.Screen name="Auth" component={AuthScreen} />
-      )}
+      <Stack.Screen name="Main" component={MainTabNavigator} />
+      <Stack.Screen name="Auth" component={AuthScreen} options={{ presentation: 'modal' }} />
     </Stack.Navigator>
   );
 }

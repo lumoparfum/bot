@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { GuestPrompt } from '../components/GuestPrompt';
 import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -63,6 +64,21 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const data = segment === 'mine' ? myListings : favorites;
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.topBar}>
+          <Text style={styles.topBarTitle}>Profilim</Text>
+        </View>
+        <GuestPrompt
+          icon="person-outline"
+          title="Profilini görmek için giriş yap"
+          message="İlanlarını, favorilerini ve hesap ayarlarını görmek için önce giriş yapman gerekiyor."
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

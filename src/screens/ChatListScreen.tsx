@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { GuestPrompt } from '../components/GuestPrompt';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +48,21 @@ export default function ChatListScreen({ navigation }: Props) {
       },
     ]);
   };
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.topBar}>
+          <Text style={styles.topBarTitle}>Mesajlar</Text>
+        </View>
+        <GuestPrompt
+          icon="chatbubbles-outline"
+          title="Mesajlarını görmek için giriş yap"
+          message="Alıcı ve satıcılarla yazışabilmek için önce hesabına giriş yapman gerekiyor."
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

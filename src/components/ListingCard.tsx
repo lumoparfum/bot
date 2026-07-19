@@ -6,6 +6,7 @@ import { radius, shadows, spacing, typography, type ColorPalette } from '../cons
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import { useFavorites } from '../context/FavoritesContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import type { Listing } from '../types/listing';
 
 type Props = {
@@ -18,6 +19,7 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const requireAuth = useRequireAuth();
   const favorited = isFavorite(listing.id);
 
   return (
@@ -34,7 +36,9 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
         />
         <Pressable
           hitSlop={8}
-          onPress={() => toggleFavorite(listing.id)}
+          onPress={() => {
+            if (requireAuth()) toggleFavorite(listing.id);
+          }}
           style={styles.favoriteButton}
         >
           <Ionicons

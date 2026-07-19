@@ -26,6 +26,7 @@ import { fetchListingById } from '../services/firestore';
 import { getOrCreateConversation } from '../services/chat';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import type { Listing } from '../types/listing';
 import type { HomeStackParamList, MainTabParamList } from '../types/navigation';
 
@@ -42,6 +43,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const requireAuth = useRequireAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const favorited = isFavorite(listing.id);
 
   const handleMessage = async () => {
-    if (!user) return;
+    if (!requireAuth() || !user) return;
     try {
       const conversationId = await getOrCreateConversation({
         listingId: listing.id,
@@ -223,7 +225,9 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         <View style={styles.headerRightControls}>
           <IconButton
             variant="translucent"
-            onPress={() => toggleFavorite(listing.id)}
+            onPress={() => {
+              if (requireAuth()) toggleFavorite(listing.id);
+            }}
             accessibilityLabel={favorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
           >
             <Ionicons

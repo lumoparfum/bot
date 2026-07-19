@@ -1,23 +1,31 @@
 import { useMemo, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandMark } from '../components/BrandMark';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { signInWithGoogle } from '../services/authService';
 import { spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import type { RootStackParamList } from '../types/navigation';
 
-export default function AuthScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
+
+export default function AuthScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canGoBack = navigation.canGoBack();
 
   const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
     try {
       await signInWithGoogle();
+      if (navigation.canGoBack()) navigation.goBack();
     } catch {
       setError('Google ile giriş yapılamadı. Lütfen tekrar dene.');
     } finally {
@@ -33,6 +41,15 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
+      {canGoBack && (
+        <Pressable
+          style={[styles.closeButton, { top: insets.top + spacing.sm }]}
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+        >
+          <Ionicons name="close" size={22} color={colors.textMuted} />
+        </Pressable>
+      )}
       <View style={styles.content}>
         <View style={styles.brandBlock}>
           <BrandMark size={64} />
@@ -73,6 +90,17 @@ function createStyles(colors: ColorPalette) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    closeButton: {
+      position: 'absolute',
+      right: spacing.md,
+      zIndex: 1,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     content: {
       flex: 1,

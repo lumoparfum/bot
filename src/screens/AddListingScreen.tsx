@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CategoryChip } from '../components/CategoryChip';
+import { GuestPrompt } from '../components/GuestPrompt';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -44,6 +45,18 @@ export default function AddListingScreen({ navigation }: Props) {
   const [location, setLocation] = useState<ListingLocation>(EMPTY_LOCATION);
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <GuestPrompt
+          icon="pricetag-outline"
+          title="İlan vermek için giriş yap"
+          message="Eşyanı satışa çıkarmak için önce hesabına giriş yapman gerekiyor."
+        />
+      </SafeAreaView>
+    );
+  }
 
   const isValid =
     title.trim().length >= 3 &&
