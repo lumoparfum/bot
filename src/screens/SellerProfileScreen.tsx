@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,6 +31,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
   const { sellerId, sellerName } = route.params;
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const requireAuth = useRequireAuth();
 
@@ -104,13 +106,13 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
         data={listings}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: spacing.xxl + insets.bottom }]}
         ListHeaderComponent={
           <View style={styles.header}>
             <IconButton onPress={() => navigation.goBack()} accessibilityLabel="Geri">
@@ -224,7 +226,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
         onClose={() => setReportModalVisible(false)}
         onSubmit={handleSubmitReport}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -242,7 +244,7 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.md,
     },
     header: {
-      paddingTop: spacing.xxl,
+      paddingTop: spacing.md,
       paddingBottom: spacing.lg,
     },
     profileBlock: {

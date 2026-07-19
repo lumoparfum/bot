@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -56,6 +56,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'ListingList'>;
 
 export default function ListingListScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { unreadCount: unreadNotifications } = useNotifications();
   const requireAuth = useRequireAuth();
@@ -337,7 +338,7 @@ export default function ListingListScreen({ navigation }: Props) {
           style={styles.backdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.filterSheet}>
+          <View style={[styles.filterSheet, { paddingBottom: spacing.xl + insets.bottom }]}>
             <View style={styles.filterHeader}>
               <Text style={styles.filterTitle}>Filtrele & Sırala</Text>
               <Pressable onPress={() => setFilterModalVisible(false)} hitSlop={8}>

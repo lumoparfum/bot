@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -36,6 +36,7 @@ function notificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMa
 export default function NotificationsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { notifications, unreadCount } = useNotifications();
 
@@ -83,7 +84,7 @@ export default function NotificationsScreen({ navigation }: Props) {
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: spacing.xxl + insets.bottom }]}
         renderItem={({ item }) => (
           <Pressable style={styles.row} onPress={() => handlePress(item)}>
             {!item.read && <View style={styles.unreadDot} />}
