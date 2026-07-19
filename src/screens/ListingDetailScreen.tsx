@@ -83,33 +83,33 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const isOwnListing = user?.uid === listing.sellerId;
   const favorited = isFavorite(listing.id);
 
-  const handleCall = () => {
-    Alert.alert('Arama', 'Bu özellik yakında aktif olacak.');
-  };
-
   const handleMessage = async () => {
     if (!user) return;
-    const conversationId = await getOrCreateConversation({
-      listingId: listing.id,
-      listingTitle: listing.title,
-      listingImage: listing.images[0] ?? null,
-      sellerId: listing.sellerId,
-      sellerName: listing.sellerName,
-      sellerPhotoURL: listing.sellerPhotoURL,
-      buyerId: user.uid,
-      buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
-      buyerPhotoURL: user.photoURL,
-    });
-    navigation.navigate('Messages', {
-      screen: 'Chat',
-      params: {
-        conversationId,
-        otherUserId: listing.sellerId,
-        otherUserName: listing.sellerName,
-        otherUserPhoto: listing.sellerPhotoURL,
+    try {
+      const conversationId = await getOrCreateConversation({
+        listingId: listing.id,
         listingTitle: listing.title,
-      },
-    });
+        listingImage: listing.images[0] ?? null,
+        sellerId: listing.sellerId,
+        sellerName: listing.sellerName,
+        sellerPhotoURL: listing.sellerPhotoURL,
+        buyerId: user.uid,
+        buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
+        buyerPhotoURL: user.photoURL,
+      });
+      navigation.navigate('Messages', {
+        screen: 'Chat',
+        params: {
+          conversationId,
+          otherUserId: listing.sellerId,
+          otherUserName: listing.sellerName,
+          otherUserPhoto: listing.sellerPhotoURL,
+          listingTitle: listing.title,
+        },
+      });
+    } catch {
+      Alert.alert('Hata', 'Sohbet açılamadı. İnternet bağlantını kontrol edip tekrar dene.');
+    }
   };
 
   const handleShare = () => {
@@ -240,23 +240,11 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
 
       {!isOwnListing && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-          <View style={styles.bottomBarButtons}>
-            <View style={styles.callButtonWrap}>
-              <PrimaryButton
-                label="Ara"
-                variant="outline"
-                onPress={handleCall}
-                icon={<Ionicons name="call-outline" size={18} color={colors.text} />}
-              />
-            </View>
-            <View style={styles.messageButtonWrap}>
-              <PrimaryButton
-                label="Mesaj Gönder"
-                onPress={handleMessage}
-                icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
-              />
-            </View>
-          </View>
+          <PrimaryButton
+            label="Mesaj Gönder"
+            onPress={handleMessage}
+            icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
+          />
         </View>
       )}
 
@@ -420,16 +408,6 @@ function createStyles(colors: ColorPalette) {
       borderTopWidth: 1,
       borderTopColor: colors.divider,
       ...shadows.raised,
-    },
-    bottomBarButtons: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-    },
-    callButtonWrap: {
-      width: 110,
-    },
-    messageButtonWrap: {
-      flex: 1,
     },
     notFound: {
       flex: 1,
