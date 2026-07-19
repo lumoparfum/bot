@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -17,6 +26,27 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [district, setDistrict] = useState('');
+
+  const filteredCities = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return TURKISH_CITIES;
+    return TURKISH_CITIES.filter((city) => city.name.toLocaleLowerCase('tr-TR').includes(q));
+  }, [search]);
+
+  const reset = () => {
+    setSearch('');
+    setSelectedCity(null);
+    setDistrict('');
+    setError(null);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
 
   const handleUseGps = async () => {
     setError(null);
@@ -29,7 +59,7 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
       }
       const label = (await reverseGeocodeLabel(coords)) ?? 'Konumum';
       onSelect({ label, latitude: coords.latitude, longitude: coords.longitude });
-      onClose();
+      handleClose();
     } catch {
       setError('Konum alınamadı. Aşağıdan şehir seçebilirsin.');
     } finally {
@@ -37,48 +67,90 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
     }
   };
 
-  const handleSelectCity = (city: City) => {
-    onSelect({ label: city.name, latitude: city.latitude, longitude: city.longitude });
-    onClose();
+  const handleConfirmCity = () => {
+    if (!selectedCity) return;
+    const label = district.trim() ? `${district.trim()}, ${selectedCity.name}` : selectedCity.name;
+    onSelect({ label, latitude: selectedCity.latitude, longitude: selectedCity.longitude });
+    handleClose();
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Konum Seç</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Ionicons name="close" size={22} color={colors.textMuted} />
-            </Pressable>
-          </View>
+          {selectedCity ? (
+            <>
+              <View style={styles.header}>
+                <Pressable onPress={() => setSelectedCity(null)} hitSlop={8}>
+                  <Ionicons name="chevron-back" size={22} color={colors.textMuted} />
+                </Pressable>
+                <Text style={styles.title}>{selectedCity.name}</Text>
+                <Pressable onPress={handleClose} hitSlop={8}>
+                  <Ionicons name="close" size={22} color={colors.textMuted} />
+                </Pressable>
+              </View>
 
-          <Pressable style={styles.gpsButton} onPress={handleUseGps} disabled={locating}>
-            {locating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="navigate" size={18} color="#fff" />
-                <Text style={styles.gpsButtonText}>Konumumu Kullan (GPS)</Text>
-              </>
-            )}
-          </Pressable>
-
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          <Text style={styles.sectionLabel}>Ya da şehir seç</Text>
-
-          <FlatList
-            data={TURKISH_CITIES}
-            keyExtractor={(item) => item.name}
-            renderItem={({ item }) => (
-              <Pressable style={styles.cityRow} onPress={() => handleSelectCity(item)}>
-                <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.cityText}>{item.name}</Text>
+              <Text style={styles.sectionLabel}>İlçe (opsiyonel)</Text>
+              <TextInput
+                style={styles.districtInput}
+                placeholder="Örn. Bafra, Kadıköy..."
+                placeholderTextColor={colors.textFaint}
+                value={district}
+                onChangeText={setDistrict}
+                autoFocus
+              />
+              <Pressable style={styles.gpsButton} onPress={handleConfirmCity}>
+                <Text style={styles.gpsButtonText}>Devam Et</Text>
               </Pressable>
-            )}
-            style={styles.cityList}
-          />
+            </>
+          ) : (
+            <>
+              <View style={styles.header}>
+                <Text style={styles.title}>Konum Seç</Text>
+                <Pressable onPress={handleClose} hitSlop={8}>
+                  <Ionicons name="close" size={22} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.gpsButton} onPress={handleUseGps} disabled={locating}>
+                {locating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="navigate" size={18} color="#fff" />
+                    <Text style={styles.gpsButtonText}>Konumumu Kullan (GPS)</Text>
+                  </>
+                )}
+              </Pressable>
+
+              {error && <Text style={styles.error}>{error}</Text>}
+
+              <Text style={styles.sectionLabel}>Ya da şehir seç</Text>
+              <View style={styles.searchRow}>
+                <Ionicons name="search" size={16} color={colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Şehir ara..."
+                  placeholderTextColor={colors.textFaint}
+                  value={search}
+                  onChangeText={setSearch}
+                />
+              </View>
+
+              <FlatList
+                data={filteredCities}
+                keyExtractor={(item) => item.name}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <Pressable style={styles.cityRow} onPress={() => setSelectedCity(item)}>
+                    <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.cityText}>{item.name}</Text>
+                  </Pressable>
+                )}
+                style={styles.cityList}
+              />
+            </>
+          )}
         </View>
       </View>
     </Modal>
@@ -87,71 +159,97 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(26, 34, 56, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    maxHeight: '75%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  title: {
-    ...typography.title3,
-    color: colors.text,
-  },
-  gpsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.navy,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  gpsButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  error: {
-    color: colors.error,
-    fontSize: 13,
-    marginBottom: spacing.sm,
-  },
-  sectionLabel: {
-    ...typography.footnote,
-    fontWeight: '600',
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  cityList: {
-    marginTop: spacing.xs,
-  },
-  cityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  cityText: {
-    ...typography.body,
-    color: colors.text,
-  },
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(26, 34, 56, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xl,
+      maxHeight: '80%',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    title: {
+      ...typography.title3,
+      color: colors.text,
+    },
+    gpsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.navy,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    gpsButtonText: {
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    error: {
+      color: colors.error,
+      fontSize: 13,
+      marginBottom: spacing.sm,
+    },
+    sectionLabel: {
+      ...typography.footnote,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginTop: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+      marginBottom: spacing.xs,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+      padding: 0,
+    },
+    districtInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      fontSize: 16,
+      color: colors.text,
+      marginBottom: spacing.md,
+    },
+    cityList: {
+      marginTop: spacing.xs,
+    },
+    cityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    cityText: {
+      ...typography.body,
+      color: colors.text,
+    },
   });
 }

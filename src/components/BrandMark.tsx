@@ -54,6 +54,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
+    // Koyu arka planlarda lacivert kutu neredeyse kayboluyordu — ince bir
+    // kenarlık her zemin renginde kutuya net bir sınır veriyor.
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
   },
   text: {
     color: colors.primary,

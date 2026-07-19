@@ -33,7 +33,7 @@ export function PrimaryButton({ label, onPress, disabled, loading, variant = 'pr
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? colors.navy : '#fff'} />
+        <ActivityIndicator color={variant === 'outline' ? colors.text : '#fff'} />
       ) : (
         <View style={styles.content}>
           {icon}
@@ -81,7 +81,7 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '600',
     },
     outlineLabel: {
-      color: colors.navy,
+      color: colors.text,
     },
   });
 }

@@ -86,7 +86,7 @@ function createStyles(colors: ColorPalette) {
     },
     title: {
       ...typography.largeTitle,
-      color: colors.navy,
+      color: colors.text,
     },
     subtitle: {
       ...typography.subhead,

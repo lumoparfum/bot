@@ -68,7 +68,8 @@ export default function ListingListScreen({ navigation }: Props) {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const hasActiveFilters = sortOption !== 'newest' || minPrice !== '' || maxPrice !== '';
+  const hasActiveFilters =
+    sortOption !== 'newest' || minPrice !== '' || maxPrice !== '' || selectedRadius !== null;
 
   const loadListings = useCallback(async () => {
     try {
@@ -124,6 +125,7 @@ export default function ListingListScreen({ navigation }: Props) {
     setSortOption('newest');
     setMinPrice('');
     setMaxPrice('');
+    setSelectedRadius(null);
   };
 
   const rows = useMemo(() => {
@@ -186,11 +188,11 @@ export default function ListingListScreen({ navigation }: Props) {
               </View>
               <View style={styles.topBarActions}>
                 <Pressable style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
-                  <Ionicons name="options-outline" size={20} color={colors.navy} />
+                  <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}
                 </Pressable>
                 <View style={styles.iconButton}>
-                  <Ionicons name="notifications-outline" size={20} color={colors.navy} />
+                  <Ionicons name="notifications-outline" size={20} color={colors.text} />
                 </View>
               </View>
             </View>
@@ -220,32 +222,6 @@ export default function ListingListScreen({ navigation }: Props) {
                   label={item}
                   selected={item === selectedCategory}
                   onPress={() => setSelectedCategory(item)}
-                />
-              ))}
-            </ScrollView>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}
-            >
-              <Pressable style={styles.locationChip} onPress={() => setPickerVisible(true)}>
-                <Ionicons name="location" size={14} color={colors.primary} />
-                <Text style={styles.locationChipText} numberOfLines={1}>
-                  {locationLabel ?? 'Konum Seç'}
-                </Text>
-              </Pressable>
-              <CategoryChip
-                label={ALL}
-                selected={selectedRadius === null}
-                onPress={() => handleRadiusPress(null)}
-              />
-              {DISTANCE_FILTERS.map((km) => (
-                <CategoryChip
-                  key={km}
-                  label={`${km} km`}
-                  selected={selectedRadius === km}
-                  onPress={() => handleRadiusPress(km)}
                 />
               ))}
             </ScrollView>
@@ -297,40 +273,67 @@ export default function ListingListScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <Text style={styles.filterSectionLabel}>Sıralama</Text>
-            <View style={styles.sortOptions}>
-              {(Object.keys(SORT_LABELS) as SortOption[])
-                .filter((option) => option !== 'distance' || userLocation)
-                .map((option) => (
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.filterSectionLabel}>Konum</Text>
+              <View style={styles.locationSection}>
+                <Pressable style={styles.locationChip} onPress={() => setPickerVisible(true)}>
+                  <Ionicons name="location" size={14} color={colors.primary} />
+                  <Text style={styles.locationChipText} numberOfLines={1}>
+                    {locationLabel ?? 'Konum Seç'}
+                  </Text>
+                </Pressable>
+                <View style={styles.sortOptions}>
                   <CategoryChip
-                    key={option}
-                    label={SORT_LABELS[option]}
-                    selected={sortOption === option}
-                    onPress={() => setSortOption(option)}
+                    label={ALL}
+                    selected={selectedRadius === null}
+                    onPress={() => handleRadiusPress(null)}
                   />
-                ))}
-            </View>
+                  {DISTANCE_FILTERS.map((km) => (
+                    <CategoryChip
+                      key={km}
+                      label={`${km} km`}
+                      selected={selectedRadius === km}
+                      onPress={() => handleRadiusPress(km)}
+                    />
+                  ))}
+                </View>
+              </View>
 
-            <Text style={styles.filterSectionLabel}>Fiyat Aralığı</Text>
-            <View style={styles.priceRangeRow}>
-              <TextInput
-                style={styles.priceInput}
-                placeholder="Min ₺"
-                placeholderTextColor={colors.textFaint}
-                keyboardType="number-pad"
-                value={minPrice}
-                onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
-              />
-              <Text style={styles.priceRangeDash}>—</Text>
-              <TextInput
-                style={styles.priceInput}
-                placeholder="Max ₺"
-                placeholderTextColor={colors.textFaint}
-                keyboardType="number-pad"
-                value={maxPrice}
-                onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
-              />
-            </View>
+              <Text style={styles.filterSectionLabel}>Sıralama</Text>
+              <View style={styles.sortOptions}>
+                {(Object.keys(SORT_LABELS) as SortOption[])
+                  .filter((option) => option !== 'distance' || userLocation)
+                  .map((option) => (
+                    <CategoryChip
+                      key={option}
+                      label={SORT_LABELS[option]}
+                      selected={sortOption === option}
+                      onPress={() => setSortOption(option)}
+                    />
+                  ))}
+              </View>
+
+              <Text style={styles.filterSectionLabel}>Fiyat Aralığı</Text>
+              <View style={styles.priceRangeRow}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Min ₺"
+                  placeholderTextColor={colors.textFaint}
+                  keyboardType="number-pad"
+                  value={minPrice}
+                  onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={styles.priceRangeDash}>—</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Max ₺"
+                  placeholderTextColor={colors.textFaint}
+                  keyboardType="number-pad"
+                  value={maxPrice}
+                  onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
+                />
+              </View>
+            </ScrollView>
 
             <View style={styles.filterActions}>
               <View style={styles.filterActionButton}>
@@ -374,7 +377,7 @@ function createStyles(colors: ColorPalette) {
     },
     brandText: {
       ...typography.title3,
-      color: colors.navy,
+      color: colors.text,
     },
     topBarActions: {
       flexDirection: 'row',
@@ -420,7 +423,7 @@ function createStyles(colors: ColorPalette) {
     },
     chipRow: {
       gap: spacing.sm,
-      paddingBottom: spacing.md,
+      paddingBottom: spacing.sm,
     },
     locationChip: {
       flexDirection: 'row',
@@ -430,12 +433,16 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       borderRadius: radius.pill,
       backgroundColor: colors.primaryLight,
-      maxWidth: 160,
+      alignSelf: 'flex-start',
+      marginBottom: spacing.sm,
     },
     locationChipText: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.primaryDark,
+    },
+    locationSection: {
+      marginBottom: spacing.sm,
     },
     emptyState: {
       alignItems: 'center',
@@ -461,6 +468,7 @@ function createStyles(colors: ColorPalette) {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
       paddingBottom: spacing.xl,
+      maxHeight: '85%',
     },
     filterHeader: {
       flexDirection: 'row',
@@ -506,7 +514,7 @@ function createStyles(colors: ColorPalette) {
     filterActions: {
       flexDirection: 'row',
       gap: spacing.sm,
-      marginTop: spacing.xl,
+      marginTop: spacing.lg,
     },
     filterActionButton: {
       flex: 1,

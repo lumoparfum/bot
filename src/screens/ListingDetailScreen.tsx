@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { FullscreenImageViewer } from '../components/FullscreenImageViewer';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -39,6 +40,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,12 +110,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
           >
             {listing.images.length > 0 ? (
               listing.images.map((uri) => (
-                <Image
-                  key={uri}
-                  source={{ uri }}
-                  style={{ width, height: imageHeight }}
-                  contentFit="cover"
-                />
+                <Pressable key={uri} onPress={() => setViewerVisible(true)}>
+                  <Image
+                    source={{ uri }}
+                    style={{ width, height: imageHeight }}
+                    contentFit="cover"
+                  />
+                </Pressable>
               ))
             ) : (
               <View style={[{ width, height: imageHeight }, styles.noImage]}>
@@ -214,7 +217,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
                 label="Ara"
                 variant="outline"
                 onPress={() => handleContact('call')}
-                icon={<Ionicons name="call-outline" size={18} color={colors.navy} />}
+                icon={<Ionicons name="call-outline" size={18} color={colors.text} />}
               />
             </View>
             <View style={styles.messageButtonWrap}>
@@ -227,6 +230,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
       )}
+
+      <FullscreenImageViewer
+        visible={viewerVisible}
+        images={listing.images}
+        initialIndex={activeImage}
+        onClose={() => setViewerVisible(false)}
+      />
     </View>
   );
 }
@@ -280,7 +290,7 @@ function createStyles(colors: ColorPalette) {
     },
     tagText: {
       ...typography.caption,
-      color: colors.navy,
+      color: colors.text,
     },
     title: {
       ...typography.title2,
