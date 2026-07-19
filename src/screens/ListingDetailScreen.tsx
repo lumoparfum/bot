@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -14,18 +15,47 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { colors, radius, shadows, spacing, typography } from '../constants/theme';
-import { formatPrice, formatRelativeDate, getListingById } from '../data/mockListings';
+import { formatPrice, formatRelativeDate } from '../utils/format';
+import { fetchListingById } from '../services/firestore';
+import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../context/FavoritesContext';
+import type { Listing } from '../types/listing';
 import type { HomeStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'ListingDetail'>;
 
 export default function ListingDetailScreen({ route, navigation }: Props) {
   const { listingId } = route.params;
-  const listing = getListingById(listingId);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites();
+
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
-  const [favorited, setFavorited] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchListingById(listingId)
+      .then((result) => {
+        if (!cancelled) setListing(result);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [listingId]);
+
+  if (loading) {
+    return (
+      <View style={styles.notFound}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
 
   if (!listing) {
     return (
@@ -37,14 +67,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   }
 
   const imageHeight = width;
+  const isOwnListing = user?.uid === listing.sellerId;
+  const favorited = isFavorite(listing.id);
 
-  // TODO: Gerçek mesajlaşma/arama akışı backend (Firestore + bildirimler)
-  // bağlandığında burada tetiklenecek. Şimdilik demo geri bildirimi.
+  // TODO: Gerçek mesajlaşma/arama akışı (bildirimler + sohbet ekranı)
+  // eklendiğinde burada tetiklenecek. Şimdilik demo geri bildirimi.
   const handleContact = (type: 'call' | 'message') => {
-    Alert.alert(
-      type === 'call' ? 'Arama' : 'Mesaj',
-      'Bu özellik yakında aktif olacak.'
-    );
+    Alert.alert(type === 'call' ? 'Arama' : 'Mesaj', 'Bu özellik yakında aktif olacak.');
   };
 
   return (
@@ -59,14 +88,20 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
               setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
             }}
           >
-            {listing.images.map((uri) => (
-              <Image
-                key={uri}
-                source={{ uri }}
-                style={{ width, height: imageHeight }}
-                contentFit="cover"
-              />
-            ))}
+            {listing.images.length > 0 ? (
+              listing.images.map((uri) => (
+                <Image
+                  key={uri}
+                  source={{ uri }}
+                  style={{ width, height: imageHeight }}
+                  contentFit="cover"
+                />
+              ))
+            ) : (
+              <View style={[{ width, height: imageHeight }, styles.noImage]}>
+                <Ionicons name="image-outline" size={40} color={colors.textFaint} />
+              </View>
+            )}
           </ScrollView>
 
           {listing.images.length > 1 && (
@@ -96,7 +131,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
 
           <View style={styles.metaRow}>
             <Ionicons name="location-outline" size={15} color={colors.textMuted} />
-            <Text style={styles.metaText}>{listing.location}</Text>
+            <Text style={styles.metaText}>{listing.location.label || 'Konum belirtilmemiş'}</Text>
             <View style={styles.metaDot} />
             <Text style={styles.metaText}>{formatRelativeDate(listing.createdAt)}</Text>
           </View>
@@ -109,9 +144,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
           <View style={styles.divider} />
 
           <View style={styles.sellerRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{listing.sellerName.charAt(0)}</Text>
-            </View>
+            {listing.sellerPhotoURL ? (
+              <Image source={{ uri: listing.sellerPhotoURL }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{listing.sellerName.charAt(0)}</Text>
+              </View>
+            )}
             <View style={styles.sellerInfo}>
               <Text style={styles.sellerName}>{listing.sellerName}</Text>
               <Text style={styles.sellerMeta}>Stop82 Üyesi</Text>
@@ -133,7 +172,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         <View style={styles.headerRightControls}>
           <IconButton
             variant="translucent"
-            onPress={() => setFavorited((v) => !v)}
+            onPress={() => toggleFavorite(listing.id)}
             accessibilityLabel={favorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
           >
             <Ionicons
@@ -148,25 +187,27 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-        <View style={styles.bottomBarButtons}>
-          <View style={styles.callButtonWrap}>
-            <PrimaryButton
-              label="Ara"
-              variant="outline"
-              onPress={() => handleContact('call')}
-              icon={<Ionicons name="call-outline" size={18} color={colors.navy} />}
-            />
-          </View>
-          <View style={styles.messageButtonWrap}>
-            <PrimaryButton
-              label="Mesaj Gönder"
-              onPress={() => handleContact('message')}
-              icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
-            />
+      {!isOwnListing && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+          <View style={styles.bottomBarButtons}>
+            <View style={styles.callButtonWrap}>
+              <PrimaryButton
+                label="Ara"
+                variant="outline"
+                onPress={() => handleContact('call')}
+                icon={<Ionicons name="call-outline" size={18} color={colors.navy} />}
+              />
+            </View>
+            <View style={styles.messageButtonWrap}>
+              <PrimaryButton
+                label="Mesaj Gönder"
+                onPress={() => handleContact('message')}
+                icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
+              />
+            </View>
           </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -175,6 +216,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  noImage: {
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dots: {
     position: 'absolute',
@@ -269,6 +315,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
   },
   avatarText: {
     color: colors.primary,

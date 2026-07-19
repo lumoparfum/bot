@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { signOutUser } from '../services/authService';
+import { ensureUserProfile } from '../services/firestore';
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -22,6 +23,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setInitializing(false);
+      if (firebaseUser) {
+        ensureUserProfile(firebaseUser.uid, {
+          displayName: firebaseUser.displayName,
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+        }).catch(() => {});
+      }
     });
     return unsubscribe;
   }, []);

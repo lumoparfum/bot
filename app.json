@@ -45,7 +45,13 @@
       ],
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Stop82'nin sana yakın ilanları gösterebilmesi için konumuna erişmesi gerekiyor."
+        }
+      ]
     ],
     "extra": {
       "eas": {

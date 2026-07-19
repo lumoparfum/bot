@@ -16,24 +16,30 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CategoryChip } from '../components/CategoryChip';
+import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { colors, radius, spacing, typography } from '../constants/theme';
-import { categories, conditions, type ListingCondition } from '../data/mockListings';
+import { categories, conditions, type ListingCondition, type ListingLocation } from '../types/listing';
+import { createListing } from '../services/firestore';
+import { useAuth } from '../context/AuthContext';
 import type { MainTabParamList } from '../types/navigation';
 
 const MAX_PHOTOS = 8;
+const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: null };
 
 type Props = BottomTabScreenProps<MainTabParamList, 'AddListing'>;
 
 export default function AddListingScreen({ navigation }: Props) {
+  const { user } = useAuth();
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [condition, setCondition] = useState<ListingCondition | null>(null);
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<ListingLocation>(EMPTY_LOCATION);
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const isValid =
@@ -76,20 +82,34 @@ export default function AddListingScreen({ navigation }: Props) {
     setCondition(null);
     setPrice('');
     setDescription('');
-    setLocation('');
+    setLocation(EMPTY_LOCATION);
   };
 
-  const handlePublish = () => {
-    if (!isValid) {
+  const handlePublish = async () => {
+    if (!isValid || !category || !condition) {
       Alert.alert('Eksik bilgi', 'Lütfen başlık, kategori, durum, fiyat ve açıklamayı doldur.');
       return;
     }
+    if (!user) {
+      Alert.alert('Giriş gerekli', 'İlan vermek için giriş yapmış olman gerekiyor.');
+      return;
+    }
     setSubmitting(true);
-    // TODO: Firestore'a ilan yazma + Storage'a fotoğraf yükleme burada
-    // gerçekleşecek. Backend bağlanana kadar bu bir demo onayıdır.
-    setTimeout(() => {
+    try {
+      await createListing({
+        title: title.trim(),
+        description: description.trim(),
+        price: Number(price),
+        category,
+        condition,
+        localImageUris: photos,
+        location,
+        sellerId: user.uid,
+        sellerName: user.displayName ?? 'Stop82 Kullanıcısı',
+        sellerPhotoURL: user.photoURL,
+      });
       setSubmitting(false);
-      Alert.alert('İlanın yayında (demo)', `"${title}" ilanı oluşturuldu.`, [
+      Alert.alert('İlanın yayında', `"${title}" ilanı yayınlandı.`, [
         {
           text: 'Tamam',
           onPress: () => {
@@ -98,7 +118,10 @@ export default function AddListingScreen({ navigation }: Props) {
           },
         },
       ]);
-    }, 600);
+    } catch {
+      setSubmitting(false);
+      Alert.alert('Bir şeyler ters gitti', 'İlan yayınlanamadı. Lütfen tekrar dene.');
+    }
   };
 
   return (
@@ -176,16 +199,13 @@ export default function AddListingScreen({ navigation }: Props) {
           />
 
           <Text style={styles.label}>Konum</Text>
-          <View style={styles.locationRow}>
+          <Pressable style={styles.locationRow} onPress={() => setLocationPickerVisible(true)}>
             <Ionicons name="location-outline" size={18} color={colors.textMuted} />
-            <TextInput
-              style={styles.locationInput}
-              placeholder="Örn. Kadıköy, İstanbul"
-              placeholderTextColor={colors.textFaint}
-              value={location}
-              onChangeText={setLocation}
-            />
-          </View>
+            <Text style={[styles.locationValue, !location.label && styles.locationPlaceholder]}>
+              {location.label || 'Konum seç (GPS veya şehir)'}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+          </Pressable>
 
           <Text style={styles.label}>Açıklama</Text>
           <TextInput
@@ -208,6 +228,12 @@ export default function AddListingScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <LocationPickerModal
+        visible={locationPickerVisible}
+        onClose={() => setLocationPickerVisible(false)}
+        onSelect={setLocation}
+      />
     </SafeAreaView>
   );
 }
@@ -307,12 +333,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-  },
-  locationInput: {
-    flex: 1,
     paddingVertical: spacing.md,
+  },
+  locationValue: {
+    flex: 1,
     fontSize: 16,
     color: colors.text,
+  },
+  locationPlaceholder: {
+    color: colors.textFaint,
   },
   textArea: {
     borderWidth: 1,

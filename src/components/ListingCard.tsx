@@ -1,17 +1,20 @@
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadows, spacing, typography } from '../constants/theme';
-import { formatPrice, formatRelativeDate, type Listing } from '../data/mockListings';
+import { formatPrice, formatRelativeDate } from '../utils/format';
+import { useFavorites } from '../context/FavoritesContext';
+import type { Listing } from '../types/listing';
 
 type Props = {
   listing: Listing;
   onPress: () => void;
+  distanceLabel?: string;
 };
 
-export function ListingCard({ listing, onPress }: Props) {
-  const [favorited, setFavorited] = useState(false);
+export function ListingCard({ listing, onPress, distanceLabel }: Props) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(listing.id);
 
   return (
     <Pressable
@@ -27,7 +30,7 @@ export function ListingCard({ listing, onPress }: Props) {
         />
         <Pressable
           hitSlop={8}
-          onPress={() => setFavorited((v) => !v)}
+          onPress={() => toggleFavorite(listing.id)}
           style={styles.favoriteButton}
         >
           <Ionicons
@@ -46,7 +49,8 @@ export function ListingCard({ listing, onPress }: Props) {
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text style={styles.metaText} numberOfLines={1}>
-            {listing.location}
+            {listing.location.label || 'Konum belirtilmemiş'}
+            {distanceLabel ? ` · ${distanceLabel}` : ''}
           </Text>
         </View>
         <Text style={styles.metaText}>{formatRelativeDate(listing.createdAt)}</Text>
