@@ -10,6 +10,7 @@ export type HomeStackParamList = {
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   Settings: undefined;
+  Terms: undefined;
 };
 
 export type MessagesStackParamList = {

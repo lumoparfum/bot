@@ -32,6 +32,26 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+        // Yorumu yazan kendi yorumunu silebilir; ilan sahibi ise sadece
+        // "hidden" alanini true yapabilir (kanit kalsin diye tam silemez).
+        allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+        allow update: if request.auth != null && (
+          request.auth.uid == resource.data.authorId ||
+          (get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']))
+        );
+      }
+    }
+
+    // Sikayetler: sadece gonderen olusturabilir, kimse okuyup/guncelleyip/
+    // silemez - tek erisim Firebase Console'dan (Admin SDK, proje sahibi).
+    match /reports/{reportId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.reporterId;
+      allow read, update, delete: if false;
     }
 
     match /conversations/{conversationId} {

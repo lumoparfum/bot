@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { RatingModal } from '../components/RatingModal';
+import { ReportModal } from '../components/ReportModal';
 import { StarRating } from '../components/StarRating';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -15,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { fetchListingsBySeller } from '../services/firestore';
 import { fetchUserRatingSummary, fetchUserReviews, submitReview } from '../services/reviews';
+import { submitReport } from '../services/reports';
 import { formatRelativeDate } from '../utils/format';
 import type { Listing } from '../types/listing';
 import type { Review, UserRatingSummary } from '../types/review';
@@ -36,6 +38,7 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
   const [summary, setSummary] = useState<UserRatingSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +84,23 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
     load();
   };
 
+  const handleOpenReport = () => {
+    if (!requireAuth()) return;
+    setReportModalVisible(true);
+  };
+
+  const handleSubmitReport = async (reason: string) => {
+    if (!user) return;
+    await submitReport({
+      type: 'user',
+      targetId: sellerId,
+      targetOwnerId: sellerId,
+      reporterId: user.uid,
+      reporterName: user.displayName ?? 'Stop82 Kullanıcısı',
+      reason,
+    });
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -119,14 +139,20 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
               </View>
 
               {!isOwnProfile && (
-                <View style={styles.rateButton}>
-                  <PrimaryButton
-                    label="Değerlendir"
-                    variant="outline"
-                    onPress={handleOpenRating}
-                    icon={<Ionicons name="star-outline" size={16} color={colors.text} />}
-                  />
-                </View>
+                <>
+                  <View style={styles.rateButton}>
+                    <PrimaryButton
+                      label="Değerlendir"
+                      variant="outline"
+                      onPress={handleOpenRating}
+                      icon={<Ionicons name="star-outline" size={16} color={colors.text} />}
+                    />
+                  </View>
+                  <Pressable onPress={handleOpenReport} hitSlop={8} style={styles.reportLink}>
+                    <Ionicons name="flag-outline" size={13} color={colors.textFaint} />
+                    <Text style={styles.reportLinkText}>Kullanıcıyı Şikayet Et</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           </View>
@@ -180,6 +206,12 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
         targetName={sellerName}
         onClose={() => setRatingModalVisible(false)}
         onSubmit={handleSubmitRating}
+      />
+      <ReportModal
+        visible={reportModalVisible}
+        title="Kullanıcıyı Şikayet Et"
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={handleSubmitReport}
       />
     </View>
   );
@@ -259,6 +291,16 @@ function createStyles(colors: ColorPalette) {
     rateButton: {
       marginTop: spacing.md,
       minWidth: 160,
+    },
+    reportLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: spacing.sm,
+    },
+    reportLinkText: {
+      ...typography.caption,
+      color: colors.textFaint,
     },
     emptyState: {
       alignItems: 'center',

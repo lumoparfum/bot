@@ -134,10 +134,11 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.rowLabel}>Sürüm</Text>
             <Text style={styles.rowValue}>1.0.0</Text>
           </View>
-          <View style={styles.row}>
+          <Pressable style={styles.row} onPress={() => navigation.navigate('Terms')}>
             <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
             <Text style={styles.rowLabel}>Kullanım Şartları ve Gizlilik</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+          </Pressable>
         </View>
 
         <Pressable style={styles.signOutRow} onPress={handleSignOut}>

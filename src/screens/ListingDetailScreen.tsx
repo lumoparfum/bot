@@ -16,14 +16,17 @@ import { Ionicons } from '@expo/vector-icons';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { CommentsSection } from '../components/CommentsSection';
 import { FullscreenImageViewer } from '../components/FullscreenImageViewer';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { ReportModal } from '../components/ReportModal';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import { deleteListing, fetchListingById, markListingSold } from '../services/firestore';
 import { getOrCreateConversation } from '../services/chat';
+import { submitReport } from '../services/reports';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -49,6 +52,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,6 +133,23 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         },
       },
     ]);
+  };
+
+  const handleOpenReport = () => {
+    if (!requireAuth()) return;
+    setReportModalVisible(true);
+  };
+
+  const handleSubmitReport = async (reason: string) => {
+    if (!user) return;
+    await submitReport({
+      type: 'listing',
+      targetId: listing.id,
+      targetOwnerId: listing.sellerId,
+      reporterId: user.uid,
+      reporterName: user.displayName ?? 'Stop82 Kullanıcısı',
+      reason,
+    });
   };
 
   const handleDelete = () => {
@@ -245,6 +266,17 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
           </Pressable>
 
+          {!isOwnListing && (
+            <Pressable onPress={handleOpenReport} hitSlop={8} style={styles.reportLink}>
+              <Ionicons name="flag-outline" size={13} color={colors.textFaint} />
+              <Text style={styles.reportLinkText}>İlanı Şikayet Et</Text>
+            </Pressable>
+          )}
+
+          <View style={styles.divider} />
+
+          <CommentsSection listingId={listing.id} listingSellerId={listing.sellerId} />
+
           <View style={{ height: 100 + insets.bottom }} />
         </View>
       </ScrollView>
@@ -312,6 +344,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         images={listing.images}
         initialIndex={activeImage}
         onClose={() => setViewerVisible(false)}
+      />
+
+      <ReportModal
+        visible={reportModalVisible}
+        title="İlanı Şikayet Et"
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={handleSubmitReport}
       />
     </View>
   );
@@ -444,6 +483,17 @@ function createStyles(colors: ColorPalette) {
     sellerMeta: {
       ...typography.caption,
       color: colors.textMuted,
+    },
+    reportLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: spacing.sm,
+      alignSelf: 'flex-start',
+    },
+    reportLinkText: {
+      ...typography.caption,
+      color: colors.textFaint,
     },
     headerControls: {
       position: 'absolute',
