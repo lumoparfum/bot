@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { signOutUser } from '../services/authService';
 import { ensureUserProfile } from '../services/firestore';
+import { registerForPushNotificationsAsync, savePushToken } from '../services/notifications';
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -30,6 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: firebaseUser.email,
           photoURL: firebaseUser.photoURL,
         }).catch(() => {});
+        registerForPushNotificationsAsync()
+          .then((token) => {
+            if (token) return savePushToken(firebaseUser.uid, token);
+          })
+          .catch(() => {});
       }
     });
     return unsubscribe;

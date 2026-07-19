@@ -53,6 +53,12 @@
         {
           "locationWhenInUsePermission": "Stop82'nin sana yakın ilanları gösterebilmesi için konumuna erişmesi gerekiyor."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6B35"
+        }
       ]
     ],
     "extra": {
