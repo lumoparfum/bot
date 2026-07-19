@@ -13,15 +13,20 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { markConversationRead, sendMessage, subscribeToMessages } from '../services/chat';
 import type { ChatMessage } from '../types/chat';
-import type { MessagesStackParamList } from '../types/navigation';
+import type { MainTabParamList, MessagesStackParamList } from '../types/navigation';
 
-type Props = NativeStackScreenProps<MessagesStackParamList, 'Chat'>;
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<MessagesStackParamList, 'Chat'>,
+  BottomTabScreenProps<MainTabParamList>
+>;
 
 export default function ChatScreen({ route, navigation }: Props) {
   const { conversationId, otherUserId, otherUserName, otherUserPhoto, listingTitle } = route.params;
@@ -45,6 +50,13 @@ export default function ChatScreen({ route, navigation }: Props) {
     }, [conversationId, user])
   );
 
+  const openOtherProfile = () => {
+    navigation.navigate('HomeTab', {
+      screen: 'SellerProfile',
+      params: { sellerId: otherUserId, sellerName: otherUserName },
+    });
+  };
+
   const handleSend = async () => {
     if (!user || !text.trim() || sending) return;
     const value = text.trim();
@@ -63,21 +75,23 @@ export default function ChatScreen({ route, navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
-        {otherUserPhoto ? (
-          <Image source={{ uri: otherUserPhoto }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarFallbackText}>{otherUserName.charAt(0)}</Text>
+        <Pressable style={styles.headerIdentity} onPress={openOtherProfile}>
+          {otherUserPhoto ? (
+            <Image source={{ uri: otherUserPhoto }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarFallbackText}>{otherUserName.charAt(0)}</Text>
+            </View>
+          )}
+          <View style={styles.headerText}>
+            <Text style={styles.headerName} numberOfLines={1}>
+              {otherUserName}
+            </Text>
+            <Text style={styles.headerListing} numberOfLines={1}>
+              {listingTitle}
+            </Text>
           </View>
-        )}
-        <View style={styles.headerText}>
-          <Text style={styles.headerName} numberOfLines={1}>
-            {otherUserName}
-          </Text>
-          <Text style={styles.headerListing} numberOfLines={1}>
-            {listingTitle}
-          </Text>
-        </View>
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -146,6 +160,12 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: colors.divider,
+    },
+    headerIdentity: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
     },
     avatar: {
       width: 36,

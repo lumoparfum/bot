@@ -11,6 +11,7 @@ type AuthContextValue = {
   user: User | null;
   initializing: boolean;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -34,12 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+    await auth.currentUser.reload();
+    setUser({ ...auth.currentUser } as User);
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated: user !== null,
       user,
       initializing,
       signOut: signOutUser,
+      refreshUser,
     }),
     [user, initializing]
   );

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,6 +7,8 @@ import { IconButton } from '../components/IconButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { updateDisplayName } from '../services/authService';
+import { ensureUserProfile } from '../services/firestore';
 import type { ProfileStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Settings'>;
@@ -20,13 +22,41 @@ const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: keyof typeof Ionico
 export default function SettingsScreen({ navigation }: Props) {
   const { colors, mode, setMode } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { signOut, user } = useAuth();
+  const { signOut, user, refreshUser } = useAuth();
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(user?.displayName ?? '');
+  const [savingName, setSavingName] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkış yapmak istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       { text: 'Çıkış Yap', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || savingName || !user) return;
+    setSavingName(true);
+    try {
+      await updateDisplayName(trimmed);
+      await refreshUser();
+      await ensureUserProfile(user.uid, {
+        displayName: trimmed,
+        email: user.email,
+        photoURL: user.photoURL,
+      });
+      setEditingName(false);
+    } catch {
+      Alert.alert('Hata', 'İsim güncellenemedi, tekrar dene.');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleCancelEditName = () => {
+    setNameInput(user?.displayName ?? '');
+    setEditingName(false);
   };
 
   return (
@@ -59,6 +89,36 @@ export default function SettingsScreen({ navigation }: Props) {
 
         <Text style={styles.sectionLabel}>Hesap</Text>
         <View style={styles.card}>
+          {editingName ? (
+            <View style={[styles.row, styles.rowDivider]}>
+              <Ionicons name="person-outline" size={20} color={colors.textMuted} />
+              <TextInput
+                style={styles.nameInput}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Adın Soyadın"
+                placeholderTextColor={colors.textFaint}
+                autoFocus
+              />
+              <Pressable onPress={handleSaveName} disabled={savingName} hitSlop={8}>
+                <Ionicons name="checkmark" size={22} color={colors.primary} />
+              </Pressable>
+              <Pressable onPress={handleCancelEditName} hitSlop={8}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.row, styles.rowDivider]}
+              onPress={() => setEditingName(true)}
+            >
+              <Ionicons name="person-outline" size={20} color={colors.textMuted} />
+              <Text style={styles.rowLabel} numberOfLines={1}>
+                {user?.displayName ?? 'İsim ekle'}
+              </Text>
+              <Ionicons name="pencil-outline" size={16} color={colors.textFaint} />
+            </Pressable>
+          )}
           <View style={styles.row}>
             <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
             <Text style={styles.rowLabel} numberOfLines={1}>
@@ -137,6 +197,12 @@ function createStyles(colors: ColorPalette) {
       ...typography.body,
       color: colors.text,
       flex: 1,
+    },
+    nameInput: {
+      ...typography.body,
+      color: colors.text,
+      flex: 1,
+      padding: 0,
     },
     rowValue: {
       ...typography.body,

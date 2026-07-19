@@ -1,5 +1,10 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { GoogleAuthProvider, signInWithCredential, signOut as firebaseSignOut } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+  signOut as firebaseSignOut,
+  updateProfile,
+} from 'firebase/auth';
 import { auth } from './firebase';
 
 GoogleSignin.configure({
@@ -14,6 +19,11 @@ export async function signInWithGoogle() {
   }
   const credential = GoogleAuthProvider.credential(response.data.idToken);
   return signInWithCredential(auth, credential);
+}
+
+export async function updateDisplayName(name: string) {
+  if (!auth.currentUser) return;
+  await updateProfile(auth.currentUser, { displayName: name });
 }
 
 export async function signOutUser() {
