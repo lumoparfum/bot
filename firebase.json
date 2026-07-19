@@ -1,0 +1,11 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": [
+    {
+      "bucket": "stop82-d19c6.firebasestorage.app",
+      "rules": "storage.rules"
+    }
+  ]
+}
