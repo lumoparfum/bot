@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -299,7 +301,10 @@ export default function ListingListScreen({ navigation }: Props) {
         transparent
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <View style={styles.backdrop}>
+        <KeyboardAvoidingView
+          style={styles.backdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.filterSheet}>
             <View style={styles.filterHeader}>
               <Text style={styles.filterTitle}>Filtrele & Sırala</Text>
@@ -391,7 +396,7 @@ export default function ListingListScreen({ navigation }: Props) {
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

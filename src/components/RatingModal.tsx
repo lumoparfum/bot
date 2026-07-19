@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -38,7 +47,10 @@ export function RatingModal({ visible, targetName, onClose, onSubmit }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>{targetName} kullanıcısını değerlendir</Text>
@@ -63,7 +75,7 @@ export function RatingModal({ visible, targetName, onClose, onSubmit }: Props) {
 
           <PrimaryButton label="Gönder" onPress={handleSubmit} loading={submitting} />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

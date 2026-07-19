@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -193,7 +195,10 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         <View style={{ height: imageHeight }}>
           <ScrollView
@@ -367,7 +372,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         onClose={() => setReportModalVisible(false)}
         onSubmit={handleSubmitReport}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
