@@ -47,6 +47,11 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
             color={favorited ? colors.primary : '#fff'}
           />
         </Pressable>
+        {listing.status === 'sold' && (
+          <View style={styles.soldBadge}>
+            <Text style={styles.soldBadgeText}>SATILDI</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.body}>
@@ -97,6 +102,21 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: 'rgba(26, 34, 56, 0.45)',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    soldBadge: {
+      position: 'absolute',
+      top: spacing.sm,
+      left: spacing.sm,
+      backgroundColor: 'rgba(26, 34, 56, 0.85)',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.sm,
+    },
+    soldBadgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.4,
     },
     body: {
       padding: spacing.sm,

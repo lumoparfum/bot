@@ -22,7 +22,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
-import { fetchListingById } from '../services/firestore';
+import { fetchListingById, markListingSold } from '../services/firestore';
 import { getOrCreateConversation } from '../services/chat';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -112,6 +112,23 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
     } catch {
       Alert.alert('Hata', 'Sohbet açılamadı. İnternet bağlantını kontrol edip tekrar dene.');
     }
+  };
+
+  const handleMarkSold = () => {
+    Alert.alert('Satıldı Olarak İşaretle', 'Bu ilanı satıldı olarak işaretlemek istediğine emin misin?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'İşaretle',
+        onPress: async () => {
+          try {
+            await markListingSold(listing.id, listing.sellerId);
+            setListing({ ...listing, status: 'sold' });
+          } catch {
+            Alert.alert('Hata', 'İşaretlenemedi, tekrar dene.');
+          }
+        },
+      },
+    ]);
   };
 
   const handleShare = () => {
@@ -210,7 +227,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
           </Pressable>
 
-          <View style={{ height: isOwnListing ? spacing.xl : 100 + insets.bottom }} />
+          <View style={{ height: 100 + insets.bottom }} />
         </View>
       </ScrollView>
 
@@ -242,15 +259,29 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      {!isOwnListing && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+        {isOwnListing ? (
+          listing.status === 'sold' ? (
+            <View style={styles.soldBar}>
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <Text style={styles.soldBarText}>Bu ilan satıldı olarak işaretlendi</Text>
+            </View>
+          ) : (
+            <PrimaryButton
+              label="Satıldı Olarak İşaretle"
+              variant="outline"
+              onPress={handleMarkSold}
+              icon={<Ionicons name="checkmark-circle-outline" size={18} color={colors.text} />}
+            />
+          )
+        ) : (
           <PrimaryButton
             label="Mesaj Gönder"
             onPress={handleMessage}
             icon={<Ionicons name="chatbubble-outline" size={18} color="#fff" />}
           />
-        </View>
-      )}
+        )}
+      </View>
 
       <FullscreenImageViewer
         visible={viewerVisible}
@@ -412,6 +443,18 @@ function createStyles(colors: ColorPalette) {
       borderTopWidth: 1,
       borderTopColor: colors.divider,
       ...shadows.raised,
+    },
+    soldBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+    },
+    soldBarText: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.text,
     },
     notFound: {
       flex: 1,

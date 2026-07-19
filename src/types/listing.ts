@@ -8,6 +8,8 @@ export type ListingLocation = {
   longitude: number | null;
 };
 
+export type ListingStatus = 'active' | 'sold';
+
 export type Listing = {
   id: string;
   title: string;
@@ -21,6 +23,7 @@ export type Listing = {
   sellerName: string;
   sellerPhotoURL: string | null;
   createdAt: number;
+  status: ListingStatus;
 };
 
 export const categories = [

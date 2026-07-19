@@ -6,10 +6,12 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
@@ -33,6 +35,7 @@ function mapListing(id: string, data: DocumentData): Listing {
     sellerName: data.sellerName,
     sellerPhotoURL: data.sellerPhotoURL ?? null,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
+    status: data.status ?? 'active',
   };
 }
 
@@ -64,8 +67,14 @@ export async function createListing(input: NewListingInput): Promise<string> {
     sellerName: input.sellerName,
     sellerPhotoURL: input.sellerPhotoURL,
     createdAt: serverTimestamp(),
+    status: 'active',
   });
   return newDocRef.id;
+}
+
+export async function markListingSold(listingId: string, sellerId: string): Promise<void> {
+  await updateDoc(doc(db, 'listings', listingId), { status: 'sold' });
+  await updateDoc(doc(db, 'users', sellerId), { salesCount: increment(1) });
 }
 
 export async function fetchListings(): Promise<Listing[]> {
