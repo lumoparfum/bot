@@ -187,39 +187,22 @@ a {
   flex-wrap: wrap;
 }
 
-.store-badge {
+/* Google/Apple'in kendi resmi rozetleri (Turkce, Wikimedia Commons'taki
+   dogrulanmis orijinal SVG dosyalari) - kendi elle cizdigimiz versiyon
+   gercek logolarin yaninda ucuz duruyordu, artik resmi dosyalar kullaniliyor. */
+.store-badge-official {
+  position: relative;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: var(--navy);
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: var(--radius-md);
-  position: relative;
-  min-width: 168px;
 }
 
-.store-badge .icon {
-  font-size: 22px;
-  line-height: 1;
+.store-badge-official img {
+  height: 100%;
+  width: auto;
 }
 
-.store-badge .label-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.store-badge .small {
-  font-size: 11px;
-  opacity: 0.75;
-}
-
-.store-badge .big {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.store-badge .soon-pill {
+.store-badge-official .soon-pill {
   position: absolute;
   top: -9px;
   right: -8px;
@@ -230,6 +213,7 @@ a {
   padding: 3px 8px;
   border-radius: var(--radius-pill);
   letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .waitlist-form {
