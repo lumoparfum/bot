@@ -13,6 +13,13 @@ export type ProfileStackParamList = {
   Settings: undefined;
   Terms: undefined;
   Help: undefined;
+  // ListingDetail/SellerProfile HomeStack'te de var (ayni ekranlar iki
+  // sekmeden de acilabilir) - boylece Profil sekmesinden bir ilana girip
+  // geri tusuna basinca Ana Sayfa'ya degil, gercekten geldigin yere
+  // (Profilim) donulur. Sekmeler arasi navigate('HomeTab', {...}) yapmak
+  // geri yiginini o sekmenin kendi stack'ine tasiyip bu hataya yol aciyordu.
+  ListingDetail: { listingId: string };
+  SellerProfile: { sellerId: string; sellerName: string };
 };
 
 export type MessagesStackParamList = {
@@ -24,6 +31,8 @@ export type MessagesStackParamList = {
     otherUserPhoto: string | null;
     listingTitle: string;
   };
+  // Ayni sebep: sohbetten satici profiline gecince geri tusu sohbete donsun.
+  SellerProfile: { sellerId: string; sellerName: string };
 };
 
 export type MainTabParamList = {

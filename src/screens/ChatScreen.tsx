@@ -71,9 +71,11 @@ export default function ChatScreen({ route, navigation }: Props) {
   );
 
   const openOtherProfile = () => {
-    navigation.navigate('HomeTab', {
-      screen: 'SellerProfile',
-      params: { sellerId: otherUserId, sellerName: otherUserName },
+    // Sekmeler arasi navigate('HomeTab', {...}) geri tusunu sohbete degil
+    // Ana Sayfa'ya donduruyordu - ekran artik bu stack'te de tanimli.
+    navigation.navigate('SellerProfile', {
+      sellerId: otherUserId,
+      sellerName: otherUserName,
     });
   };
 

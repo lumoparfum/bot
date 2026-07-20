@@ -67,7 +67,11 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 
   const openListing = (listingId: string) => {
-    navigation.navigate('HomeTab', { screen: 'ListingDetail', params: { listingId } });
+    // Sekmeler arasi navigate('HomeTab', {...}) gecmisi Ana Sayfa'nin kendi
+    // stack'ine tasiyip geri tusunu Profilim yerine Ana Sayfa'ya
+    // dondurüyordu - ayni ekran artik bu stack'te de tanimli (bkz.
+    // ProfileStackNavigator), o yuzden dogrudan buraya push ediliyor.
+    navigation.navigate('ListingDetail', { listingId });
   };
 
   const handleChangeSegment = (next: Segment) => {

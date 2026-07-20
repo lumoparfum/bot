@@ -233,6 +233,48 @@ exports.onNewListingMatchSavedSearches = onDocumentCreated(
   }
 );
 
+// Profil (isim/fotograf) her ilan/sohbet olusturulurken o anki haliyle
+// kopyalanip saklanir (performans icin - her goruntulemede users/{uid}'yi
+// ayrica okumaya gerek kalmaz). Kullanici sonradan adini/fotografini
+// degistirirse bu kopyalar guncel kalsin diye buradan senkronize edilir.
+exports.onUserProfileUpdated = onDocumentUpdated(
+  { document: 'users/{userId}', region: REGION },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    const { userId } = event.params;
+
+    const nameChanged = before.displayName !== after.displayName;
+    const photoChanged = before.photoURL !== after.photoURL;
+    if (!nameChanged && !photoChanged) return;
+
+    const newName = after.displayName ?? 'Stop82 Kullanıcısı';
+    const newPhoto = after.photoURL ?? null;
+
+    const listingsSnap = await db.collection('listings').where('sellerId', '==', userId).get();
+    await Promise.all(
+      listingsSnap.docs.map((docSnap) =>
+        docSnap.ref.update({ sellerName: newName, sellerPhotoURL: newPhoto }).catch(() => {})
+      )
+    );
+
+    const sellerConvosSnap = await db.collection('conversations').where('sellerId', '==', userId).get();
+    await Promise.all(
+      sellerConvosSnap.docs.map((docSnap) =>
+        docSnap.ref.update({ sellerName: newName, sellerPhotoURL: newPhoto }).catch(() => {})
+      )
+    );
+
+    const buyerConvosSnap = await db.collection('conversations').where('buyerId', '==', userId).get();
+    await Promise.all(
+      buyerConvosSnap.docs.map((docSnap) =>
+        docSnap.ref.update({ buyerName: newName, buyerPhotoURL: newPhoto }).catch(() => {})
+      )
+    );
+  }
+);
+
 // Stop82 ekibi Firebase Console'dan bir isletme basvurusunun status alanini
 // 'approved' veya 'rejected' yaptiginda, kullanicinin accountType'i otomatik
 // senkronize edilir - ayri bir manuel adima gerek kalmaz.
