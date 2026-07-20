@@ -3,11 +3,10 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { showAlert } from '../components/AppAlert';
 import { BrandMark } from '../components/BrandMark';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Wordmark } from '../components/Wordmark';
-import { signInWithGoogle } from '../services/authService';
+import { signInWithApple, signInWithGoogle } from '../services/authService';
 import { spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
@@ -35,10 +34,21 @@ export default function AuthScreen({ navigation }: Props) {
     }
   };
 
-  // TODO: Apple Developer üyeliği alınıp expo-apple-authentication
-  // yapılandırıldığında gerçek Apple ile giriş buraya bağlanacak.
-  const handleAppleSignIn = () => {
-    showAlert('Yakında', 'Apple ile giriş çok yakında aktif olacak.');
+  const handleAppleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithApple();
+      if (navigation.canGoBack()) navigation.goBack();
+    } catch (err: any) {
+      // Kullanici kendi vazgecip iptal ederse (ERR_REQUEST_CANCELED) sessizce
+      // cik - bu bir hata degil, kullanicinin kendi tercihi.
+      if (err?.code !== 'ERR_REQUEST_CANCELED') {
+        setError('Apple ile giriş yapılamadı. Lütfen tekrar dene.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,6 +84,7 @@ export default function AuthScreen({ navigation }: Props) {
               label="Apple ile Giriş Yap"
               variant="navy"
               onPress={handleAppleSignIn}
+              loading={loading}
               icon={<Ionicons name="logo-apple" size={18} color="#fff" />}
             />
           )}
