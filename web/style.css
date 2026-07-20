@@ -886,12 +886,12 @@ body::before {
 /* Responsive */
 @media (max-width: 880px) {
   .nav .container {
-    height: 60px;
+    height: 54px;
   }
 
   .nav-links {
     position: fixed;
-    top: 60px;
+    top: 54px;
     left: 0;
     right: 0;
     background: #fff;
