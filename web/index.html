@@ -15,8 +15,9 @@
       <a href="/" class="wordmark">Stop<span>82</span></a>
       <nav class="nav-links">
         <a href="#neden">Neden Stop82</a>
+        <a href="#karsilastir">Karşılaştır</a>
         <a href="#nasil-calisir">Nasıl Çalışır</a>
-        <a href="#ekran-goruntuleri">Uygulama</a>
+        <a href="#sss">SSS</a>
         <a href="#indir" class="nav-cta">İndir</a>
       </nav>
       <button class="nav-menu-btn" aria-label="Menü">
@@ -28,10 +29,11 @@
   <main>
     <!-- HERO -->
     <section class="hero">
+      <div class="hero-mesh"><span></span><span></span><span></span></div>
       <div class="container">
         <div class="hero-copy">
           <span class="eyebrow">🇹🇷 Türkiye'nin yeni ikinci el pazarı</span>
-          <h1>İkinci elin<br />yeni adresi: <span>Stop82</span></h1>
+          <h1>İkinci elin<br />yeni adresi: <span class="gradient-text">Stop82</span></h1>
           <p class="hero-tagline">Ücretsiz. Güvenli. Yakınında.</p>
           <p class="hero-sub">
             Komisyon yok, doping yok, gizli ücret yok. İlanını ücretsiz ver,
@@ -40,7 +42,9 @@
 
           <div class="store-badges">
             <div class="store-badge">
-              <span class="icon">🍏</span>
+              <svg class="icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12-1.14.463-2.35 1.15-3.14.766-.9 2.09-1.51 3.014-1.51zm4.24 16.53c-.34.78-.502 1.13-.94 1.82-.61.98-1.47 2.2-2.54 2.21-.95.01-1.19-.62-2.48-.61-1.29.01-1.55.63-2.5.62-1.07-.01-1.88-1.11-2.49-2.09-1.71-2.72-1.89-5.91-.83-7.61.75-1.2 1.94-1.9 3.06-1.9 1.14 0 1.86.63 2.8.63.92 0 1.48-.63 2.8-.63.99 0 2.04.54 2.79 1.47-2.45 1.34-2.05 4.84.34 5.99z"/>
+              </svg>
               <span class="label-group">
                 <span class="small">İndir</span>
                 <span class="big">App Store</span>
@@ -48,7 +52,9 @@
               <span class="soon-pill">Yakında</span>
             </div>
             <div class="store-badge">
-              <span class="icon">▶</span>
+              <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M3 2.5c0-.3.16-.58.42-.73.26-.15.58-.14.83.02l14 8.5c.24.15.39.41.39.71s-.15.56-.39.71l-14 8.5a.83.83 0 0 1-.83.02A.83.83 0 0 1 3 19.5v-17z"/>
+              </svg>
               <span class="label-group">
                 <span class="small">İndir</span>
                 <span class="big">Google Play</span>
@@ -98,26 +104,26 @@
     <!-- NEDEN STOP82 -->
     <section class="section" id="neden">
       <div class="container">
-        <div class="section-head">
+        <div class="section-head reveal">
           <span class="eyebrow">Neden Stop82</span>
           <h2>Diğerlerinin ücretlendirdiğini biz ücretsiz veriyoruz</h2>
           <p>Türkiye'deki ikinci el pazarını inceledik. Her platformun kullanıcıyı yorduğu bir nokta var — biz tam oradan başladık.</p>
         </div>
 
         <div class="feature-grid">
-          <div class="feature-card">
+          <div class="feature-card reveal reveal-1">
             <div class="icon-badge">💸</div>
             <h3>Komisyon Yok</h3>
             <p>Sattığın ürünün parası cebinde kalır. Sipariş/satış üzerinden hiçbir yüzde kesmiyoruz.</p>
             <span class="vs">Dolap'ın aksine</span>
           </div>
-          <div class="feature-card">
+          <div class="feature-card reveal reveal-2">
             <div class="icon-badge">📣</div>
             <h3>Doping Yok</h3>
             <p>İlanını öne çıkarmak için para ödemene gerek yok. Herkesin ilanı eşit şartlarda görünür.</p>
             <span class="vs">Sahibinden'in aksine</span>
           </div>
-          <div class="feature-card">
+          <div class="feature-card reveal reveal-3">
             <div class="icon-badge">🛡️</div>
             <h3>Güvenlik Önce Gelir</h3>
             <p>Yanıt oranı rozetleri, onaylı işletme hesapları, şikayet ve engelleme sistemiyle güvenle alışveriş.</p>
@@ -127,27 +133,89 @@
       </div>
     </section>
 
-    <!-- NASIL ÇALIŞIR -->
-    <section class="section section-alt" id="nasil-calisir">
+    <!-- KARŞILAŞTIR -->
+    <section class="section section-alt" id="karsilastir">
       <div class="container">
-        <div class="section-head">
+        <div class="section-head reveal">
+          <span class="eyebrow">Karşılaştır</span>
+          <h2>Aynı pazar, çok farklı kurallar</h2>
+          <p>Süslemeden, yan yana koyduk. Fark gözle görülür.</p>
+        </div>
+
+        <div class="cmp-wrap reveal">
+          <table class="cmp-table">
+            <thead>
+              <tr>
+                <th scope="col">Özellik</th>
+                <th scope="col" class="brand-col">Stop82</th>
+                <th scope="col">Sahibinden</th>
+                <th scope="col">Dolap</th>
+                <th scope="col">Letgo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Satış komisyonu</th>
+                <td class="brand-col"><span class="cmp-yes">✓ Yok</span></td>
+                <td>Yok</td>
+                <td><span class="cmp-no">Satıştan kesinti</span></td>
+                <td>Yok</td>
+              </tr>
+              <tr>
+                <th scope="row">Öne çıkarma / "doping" ücreti</th>
+                <td class="brand-col"><span class="cmp-yes">✓ Yok, herkes eşit</span></td>
+                <td><span class="cmp-no">Var</span></td>
+                <td><span class="cmp-no">Var</span></td>
+                <td>Sınırlı</td>
+              </tr>
+              <tr>
+                <th scope="row">Yanıt oranı / güven rozeti</th>
+                <td class="brand-col"><span class="cmp-yes">✓ Var</span></td>
+                <td><span class="cmp-no">Yok</span></td>
+                <td><span class="cmp-no">Yok</span></td>
+                <td><span class="cmp-no">Yok</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Ekip onaylı işletme hesabı</th>
+                <td class="brand-col"><span class="cmp-yes">✓ Var, ücretsiz</span></td>
+                <td>Kurumsal üyelik (ücretli)</td>
+                <td><span class="cmp-no">Yok</span></td>
+                <td><span class="cmp-no">Yok</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Şikayet &amp; engelleme sistemi</th>
+                <td class="brand-col"><span class="cmp-yes">✓ Var</span></td>
+                <td>Var</td>
+                <td>Sınırlı</td>
+                <td><span class="cmp-no">Zayıf moderasyon</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- NASIL ÇALIŞIR -->
+    <section class="section" id="nasil-calisir">
+      <div class="container">
+        <div class="section-head reveal">
           <span class="eyebrow">Nasıl Çalışır</span>
           <h2>Üç adımda ilanın yayında</h2>
           <p>Karmaşık formlar yok. Ne satacaksan söyle, gerisini kategori sihirbazımız halletsin.</p>
         </div>
 
         <div class="steps">
-          <div class="step">
+          <div class="step reveal reveal-1">
             <div class="step-num">1</div>
             <h3>Fotoğrafını Çek, İlanı Ver</h3>
             <p>Kategori sihirbazı doğru detayları (marka, model, m² vb.) otomatik sorar, saniyeler içinde ilanın yayında.</p>
           </div>
-          <div class="step">
+          <div class="step reveal reveal-2">
             <div class="step-num">2</div>
             <h3>Güvenle Mesajlaş</h3>
             <p>Alıcı ve satıcı uygulama içinden yazışır, numara paylaşmak zorunda değilsin.</p>
           </div>
-          <div class="step">
+          <div class="step reveal reveal-3">
             <div class="step-num">3</div>
             <h3>Buluş, Sat</h3>
             <p>Anlaştığınızda buluşup teslim edersiniz. Aradan çektiğimiz tek kuruş yok.</p>
@@ -156,16 +224,42 @@
       </div>
     </section>
 
+    <!-- KATEGORİLER -->
+    <section class="section section-alt" id="kategoriler">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Kategoriler</span>
+          <h2>Telefondan emlağa, ne satacaksan bir yerin var</h2>
+          <p>14 ana kategori, her biri kendi detaylarıyla (araçta km/yakıt, emlakta m²/oda sayısı) düşünüldü.</p>
+        </div>
+
+        <div class="category-grid reveal">
+          <div class="category-chip"><span class="emoji">📱</span><span class="label">Telefon</span></div>
+          <div class="category-chip"><span class="emoji">🚗</span><span class="label">Araç</span></div>
+          <div class="category-chip"><span class="emoji">🏠</span><span class="label">Emlak</span></div>
+          <div class="category-chip"><span class="emoji">👕</span><span class="label">Giyim</span></div>
+          <div class="category-chip"><span class="emoji">👜</span><span class="label">Ayakkabı &amp; Çanta</span></div>
+          <div class="category-chip"><span class="emoji">🔌</span><span class="label">Elektronik</span></div>
+          <div class="category-chip"><span class="emoji">🛋️</span><span class="label">Ev Eşyası</span></div>
+          <div class="category-chip"><span class="emoji">🪑</span><span class="label">Mobilya</span></div>
+          <div class="category-chip"><span class="emoji">🖥️</span><span class="label">Bilgisayar</span></div>
+          <div class="category-chip"><span class="emoji">🍼</span><span class="label">Anne &amp; Bebek</span></div>
+          <div class="category-chip"><span class="emoji">⚽</span><span class="label">Spor &amp; Outdoor</span></div>
+          <div class="category-chip"><span class="emoji">🎮</span><span class="label">Oyun &amp; Konsol</span></div>
+        </div>
+      </div>
+    </section>
+
     <!-- EKRAN GÖRÜNTÜLERİ -->
     <section class="section" id="ekran-goruntuleri">
       <div class="container">
-        <div class="section-head">
+        <div class="section-head reveal">
           <span class="eyebrow">Uygulama</span>
-          <h2>iOS kalitesinde, sade bir deneyim</h2>
+          <h2>Kafa karıştırmayan, sade bir deneyim</h2>
           <p>Gereksiz adım yok, kafa karıştıran menüler yok — sadece hızlı alım satım.</p>
         </div>
 
-        <div class="screens-strip">
+        <div class="screens-strip reveal">
           <div class="screen-item">
             <div class="device"><div class="screen">
               <div class="mock-screen mock-home compact">
@@ -224,10 +318,48 @@
       </div>
     </section>
 
+    <!-- SSS -->
+    <section class="section section-alt" id="sss">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">SSS</span>
+          <h2>Aklına takılanlar</h2>
+          <p>Uygulama içindeki Yardım bölümüyle birebir aynı, gerçek cevaplar.</p>
+        </div>
+
+        <div class="faq-list reveal">
+          <details class="faq-item">
+            <summary>Stop82 gerçekten tamamen ücretsiz mi?</summary>
+            <p>Evet. İlan vermek, mesajlaşmak, yorum yapmak, hiçbir işlem için ücret ya da komisyon almıyoruz, öne çıkarma diye bir şey yok. Stop82'nin mottosu bu: bedava kalmaya devam edecek.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Ödeme nasıl yapılıyor, Stop82 aracı oluyor mu?</summary>
+            <p>Hayır. Stop82 alım satıma taraf değildir ve hiçbir zaman para tutmaz. Alıcı ve satıcı fiyatta anlaşıp ödemeyi kendi aralarında, tercihen elden teslimle yapar.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Bir kullanıcı beni dolandırmaya çalışıyor, ne yapmalıyım?</summary>
+            <p>İlan, yorum ya da profildeki "Şikayet Et" seçeneğini kullan; bildirdiğin içerik kalıcı olarak kayıt altına alınır. Asla önden ödeme yapma ve mümkünse güvenli, kalabalık bir yerde buluş.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Satıcı mesajıma cevap vermiyor, ne yapmalıyım?</summary>
+            <p>Satıcının profilinde "Genelde ... içinde yanıtlıyor" rozetini kontrol edebilirsin. Makul bir süre içinde cevap gelmezse başka bir satıcıyla iletişime geçmeni öneririz.</p>
+          </details>
+          <details class="faq-item">
+            <summary>İlanım ne zaman kaldırılır?</summary>
+            <p>İlanlar güncel kalsın diye yayından 15 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir. Ürünü sattıysan ilan sayfasından "Satıldı" olarak işaretleyebilirsin.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Hesabımı ve verilerimi nasıl silerim?</summary>
+            <p>Ayarlar sayfasının en altındaki "Hesabımı Kalıcı Olarak Sil" seçeneğiyle hesabını ve tüm verilerini anında ve kalıcı olarak silebilirsin. Detaylar için <a class="inline-link" href="hesap-silme.html">Hesap Silme</a> sayfasına bakabilirsin.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
     <!-- İNDİR -->
     <section class="section" id="indir">
       <div class="container">
-        <div class="download-band">
+        <div class="download-band reveal">
           <div>
             <h2>Komisyonsuz alışverişe hazır mısın?</h2>
             <p>Uygulama çok yakında App Store ve Google Play'de. E-postanı bırak, yayınlanır yayınlanmaz haber verelim.</p>

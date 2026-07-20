@@ -672,7 +672,7 @@ a {
   padding-left: 20px;
 }
 
-.legal-page a.inline-link {
+a.inline-link {
   color: var(--primary-dark);
   font-weight: 600;
   text-decoration: underline;
@@ -690,6 +690,172 @@ a {
 
 .back-link:hover {
   color: var(--text);
+}
+
+/* ===== Elevated visual layer ===== */
+
+/* Ince "grain" dokusu - premium/sanat eseri hissi icin, performans maliyeti
+   neredeyse sifir (tek bir SVG turbulence, sabit konumda, cok dusuk opaklik). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.gradient-text {
+  background: linear-gradient(120deg, var(--primary) 0%, var(--primary-dark) 55%, #FF9A63 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero { position: relative; }
+.hero-mesh {
+  position: absolute;
+  inset: -15% -10% auto -10%;
+  height: 140%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hero-mesh span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.45;
+  animation: drift 20s ease-in-out infinite alternate;
+}
+.hero-mesh span:nth-child(1) { width: 420px; height: 420px; background: var(--primary); top: -8%; left: 2%; }
+.hero-mesh span:nth-child(2) { width: 340px; height: 340px; background: #FFD9A0; top: 18%; right: -6%; animation-delay: -7s; }
+.hero-mesh span:nth-child(3) { width: 300px; height: 300px; background: var(--navy-light); opacity: 0.15; bottom: -8%; left: 32%; animation-delay: -13s; }
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(34px, -24px) scale(1.1); }
+}
+
+.hero .container { position: relative; z-index: 1; }
+
+/* Kaydirinca beliren bolumler */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(.2,.7,.2,1), transform 0.7s cubic-bezier(.2,.7,.2,1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-1 { transition-delay: 0.05s; }
+.reveal-2 { transition-delay: 0.15s; }
+.reveal-3 { transition-delay: 0.25s; }
+.reveal-4 { transition-delay: 0.35s; }
+
+.floating-card { animation: bob 4.5s ease-in-out infinite; }
+.floating-card.bottom { animation-delay: -2.2s; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.feature-card, .category-chip {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-raised);
+  border-color: var(--primary-light);
+}
+.category-chip:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-raised);
+  border-color: var(--primary-light);
+}
+
+/* Karsilastirma tablosu */
+.cmp-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+.cmp-table { width: 100%; border-collapse: collapse; min-width: 640px; background: #fff; }
+.cmp-table th, .cmp-table td { padding: 18px 22px; text-align: left; font-size: 14.5px; border-bottom: 1px solid var(--border); }
+.cmp-table thead th { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-faint); font-weight: 700; background: var(--surface); }
+.cmp-table thead th.brand-col { color: var(--primary-dark); background: var(--primary-light); }
+.cmp-table tbody th { font-weight: 600; color: var(--text); white-space: nowrap; }
+.cmp-table td.brand-col { background: #FFF6F0; font-weight: 700; color: var(--primary-dark); }
+.cmp-table tr:last-child td, .cmp-table tr:last-child th { border-bottom: none; }
+.cmp-yes { color: var(--success); font-weight: 700; }
+.cmp-no { color: var(--text-faint); }
+
+/* Kategori vitrini */
+.category-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.category-chip {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 12px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+.category-chip .emoji { font-size: 28px; display: block; margin-bottom: 10px; }
+.category-chip .label { font-size: 13px; font-weight: 700; color: var(--text); }
+
+/* SSS akordiyon */
+.faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.faq-item {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 4px 24px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease;
+}
+.faq-item[open] { box-shadow: var(--shadow-raised); }
+.faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 20px 0;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+";
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--primary);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.faq-item[open] summary::after { transform: rotate(45deg); }
+.faq-item p {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin: 0 0 20px;
+}
+
+@media (max-width: 880px) {
+  .category-grid { grid-template-columns: repeat(3, 1fr); }
+  .hero-mesh span { filter: blur(44px); }
+  .cmp-table th, .cmp-table td { padding: 14px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .floating-card, .hero-mesh span { animation: none; }
 }
 
 /* Responsive */
