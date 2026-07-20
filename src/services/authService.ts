@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -17,7 +17,18 @@ GoogleSignin.configure({
 
 export async function signInWithGoogle() {
   await GoogleSignin.hasPlayServices();
-  const response = await GoogleSignin.signIn();
+  let response;
+  try {
+    response = await GoogleSignin.signIn();
+  } catch (err: any) {
+    // Kullanici hesap secme ekranindan geri cikarsa bu bir hata degil -
+    // Apple tarafindaki ERR_REQUEST_CANCELED ile ayni koda esitleyip
+    // AuthScreen'in tek bir yerden, sessizce gecmesini sagliyoruz.
+    if (err?.code === statusCodes.SIGN_IN_CANCELLED) {
+      throw Object.assign(new Error('İptal edildi.'), { code: 'ERR_REQUEST_CANCELED' });
+    }
+    throw err;
+  }
   if (response.type !== 'success' || !response.data.idToken) {
     throw new Error('Google girişi tamamlanamadı.');
   }
@@ -80,6 +91,13 @@ async function signInWithAppleAndroid() {
 
   const result = await WebBrowser.openAuthSessionAsync(authUrl, APP_AUTH_REDIRECT);
   if (result.type !== 'success' || !result.url) {
+    // Kullanici tarayiciyi kendi kapatirsa (cancel/dismiss) bu bir hata
+    // degil - iOS'taki ERR_REQUEST_CANCELED ile ayni koda esleyip
+    // AuthScreen'in zaten sessizce gectigi yolu kullaniyoruz.
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      const cancelError = Object.assign(new Error('İptal edildi.'), { code: 'ERR_REQUEST_CANCELED' });
+      throw cancelError;
+    }
     throw new Error('Apple girişi tamamlanamadı.');
   }
 

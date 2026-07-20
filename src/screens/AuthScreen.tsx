@@ -17,26 +17,37 @@ export default function AuthScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState(false);
+  // Ayri durumlar - ikisi de ayni "loading" degiskenini paylasirsa, birine
+  // basinca iki buton da donmeye basliyordu.
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canGoBack = navigation.canGoBack();
 
+  // authService.ts icinde bilerek firlatilan (Firebase/native SDK hatasi
+  // olmayan, .code alani tasimayan) hatalar zaten anlasilir Turkce mesaj
+  // iceriyor - o zaman genel mesajla ezmek yerine oldugu gibi gosteriyoruz.
+  const messageFor = (err: any, fallback: string) =>
+    !err?.code && typeof err?.message === 'string' ? err.message : fallback;
+
   const handleGoogleSignIn = async () => {
     setError(null);
-    setLoading(true);
+    setGoogleLoading(true);
     try {
       await signInWithGoogle();
       if (navigation.canGoBack()) navigation.goBack();
-    } catch {
-      setError('Google ile giriş yapılamadı. Lütfen tekrar dene.');
+    } catch (err: any) {
+      if (err?.code !== 'ERR_REQUEST_CANCELED') {
+        setError(messageFor(err, 'Google ile giriş yapılamadı. Lütfen tekrar dene.'));
+      }
     } finally {
-      setLoading(false);
+      setGoogleLoading(false);
     }
   };
 
   const handleAppleSignIn = async () => {
     setError(null);
-    setLoading(true);
+    setAppleLoading(true);
     try {
       await signInWithApple();
       if (navigation.canGoBack()) navigation.goBack();
@@ -44,10 +55,10 @@ export default function AuthScreen({ navigation }: Props) {
       // Kullanici kendi vazgecip iptal ederse (ERR_REQUEST_CANCELED) sessizce
       // cik - bu bir hata degil, kullanicinin kendi tercihi.
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        setError('Apple ile giriş yapılamadı. Lütfen tekrar dene.');
+        setError(messageFor(err, 'Apple ile giriş yapılamadı. Lütfen tekrar dene.'));
       }
     } finally {
-      setLoading(false);
+      setAppleLoading(false);
     }
   };
 
@@ -76,14 +87,16 @@ export default function AuthScreen({ navigation }: Props) {
             label="Google ile Giriş Yap"
             variant="outline"
             onPress={handleGoogleSignIn}
-            loading={loading}
+            loading={googleLoading}
+            disabled={appleLoading}
             icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
           />
           <PrimaryButton
             label="Apple ile Giriş Yap"
             variant="navy"
             onPress={handleAppleSignIn}
-            loading={loading}
+            loading={appleLoading}
+            disabled={googleLoading}
             icon={<Ionicons name="logo-apple" size={18} color="#fff" />}
           />
         </View>

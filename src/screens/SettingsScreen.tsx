@@ -215,6 +215,7 @@ export default function SettingsScreen({ navigation }: Props) {
             try {
               await deleteAccount();
               await signOut();
+              navigation.navigate('ProfileHome');
             } catch {
               showAlert('Hata', 'Hesap silinemedi. İnternet bağlantını kontrol edip tekrar dene.');
             } finally {
