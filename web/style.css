@@ -693,6 +693,21 @@ a.inline-link {
   color: var(--text);
 }
 
+.fact-box {
+  background: var(--primary-light);
+  border: 1px solid #FFD2B3;
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.65;
+  margin: 24px 0;
+}
+
+.fact-box strong {
+  color: var(--primary-dark);
+}
+
 /* ===== Elevated visual layer ===== */
 
 /* Ince "grain" dokusu - premium/sanat eseri hissi icin, performans maliyeti
