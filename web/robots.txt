@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://stop82.app/sitemap.xml

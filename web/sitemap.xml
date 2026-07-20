@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Gercek bir alan adi baglandiginda (su an stop82.app varsayimsal) bu
+     dosyadaki ve robots.txt'teki adresleri guncellemek gerekir. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://stop82.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://stop82.app/kategori/telefon.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/arac.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/emlak.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/giyim.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/ayakkabi-canta.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/elektronik.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/ev-esyasi.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/mobilya.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/bilgisayar.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/anne-bebek.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/spor-outdoor.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/kategori/oyun-konsol.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://stop82.app/gizlilik-politikasi.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stop82.app/kullanim-sartlari.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stop82.app/kvkk-aydinlatma-metni.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stop82.app/hesap-silme.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+</urlset>
