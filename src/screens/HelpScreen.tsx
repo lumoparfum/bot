@@ -20,7 +20,7 @@ import { radius, spacing, typography, type ColorPalette } from '../constants/the
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import { createSupportRequest } from '../services/support';
+import { checkSupportRequestAllowed, createSupportRequest, DAILY_SUPPORT_REQUEST_LIMIT } from '../services/support';
 import type { ProfileStackParamList } from '../types/navigation';
 import type { SupportRequestType } from '../types/support';
 
@@ -96,6 +96,14 @@ export default function HelpScreen({ navigation }: Props) {
 
     setSending(true);
     try {
+      const allowed = await checkSupportRequestAllowed(user.uid);
+      if (!allowed) {
+        showAlert(
+          'Günlük gönderim sınırına ulaştın',
+          `Spam ve botları önlemek için günde en fazla ${DAILY_SUPPORT_REQUEST_LIMIT} mesaj gönderilebiliyor. Yarın tekrar dene.`
+        );
+        return;
+      }
       await createSupportRequest({
         uid: user.uid,
         userName: user.displayName ?? 'Stop82 Kullanıcısı',

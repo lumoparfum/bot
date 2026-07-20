@@ -127,11 +127,13 @@ service cloud.firestore {
       }
     }
 
-    // Destek talepleri: reports ile ayni model - sadece gonderen olusturabilir,
-    // kimse okuyup/guncelleyip/silemez - tek erisim Firebase Console'dan.
+    // Destek talepleri: sadece gonderen olusturabilir ve kendi gonderdiklerini
+    // (gunluk spam limitini istemci tarafinda sayabilmek icin) okuyabilir -
+    // kimse guncelleyip/silemez, inceleme tek Firebase Console'dan.
     match /supportRequests/{requestId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow read, update, delete: if false;
+      allow update, delete: if false;
     }
 
     // Isletme hesabi basvurulari: sadece basvuran olusturabilir ve kendi
