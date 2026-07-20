@@ -8,6 +8,13 @@ import { categories, categoryIcons, getAttributeDefs, getEffectiveAttributeDefs,
 import { formatNumberInput } from '../utils/format';
 import { PrimaryButton } from './PrimaryButton';
 
+// Emlak: 1 Subat 2026'dan beri Elektronik Ilan Dogrulama Sistemi (EIDS)
+// tasinmaz ilanlarinda mal sahibi/akraba kimlik dogrulamasi zorunlu kiliyor
+// (Tasinmaz Ticareti Hakkinda Yonetmelik). Bu entegrasyon hazir olana kadar
+// ilan olusturma kapali tutuluyor - hic ilan yayinlanmadigi surece
+// dogrulanmasi gereken bir sey de olmuyor.
+const DISABLED_CATEGORIES = new Set(['Emlak']);
+
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -154,23 +161,34 @@ export function CategoryPickerModal({
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {!category &&
-              categories.map((item) => (
-                <Pressable key={item} style={styles.row} onPress={() => handlePickCategory(item)}>
-                  <View style={styles.rowIcon}>
-                    <Ionicons
-                      name={categoryIcons[item] ?? 'pricetag-outline'}
-                      size={16}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={styles.rowLabel}>{item}</Text>
-                  {item === initialCategory ? (
-                    <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  ) : (
-                    <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
-                  )}
-                </Pressable>
-              ))}
+              categories.map((item) => {
+                const disabled = DISABLED_CATEGORIES.has(item);
+                return (
+                  <Pressable
+                    key={item}
+                    style={[styles.row, disabled && styles.rowDisabled]}
+                    onPress={() => !disabled && handlePickCategory(item)}
+                  >
+                    <View style={[styles.rowIcon, disabled && styles.rowIconDisabled]}>
+                      <Ionicons
+                        name={categoryIcons[item] ?? 'pricetag-outline'}
+                        size={16}
+                        color={disabled ? colors.textFaint : colors.primary}
+                      />
+                    </View>
+                    <Text style={[styles.rowLabel, disabled && styles.rowLabelDisabled]}>{item}</Text>
+                    {disabled ? (
+                      <View style={styles.soonBadge}>
+                        <Text style={styles.soonBadgeText}>Yakında</Text>
+                      </View>
+                    ) : item === initialCategory ? (
+                      <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+                    )}
+                  </Pressable>
+                );
+              })}
 
             {category &&
               !subcategory &&
@@ -290,6 +308,26 @@ function createStyles(colors: ColorPalette) {
       ...typography.body,
       color: colors.text,
       flex: 1,
+    },
+    rowDisabled: {
+      opacity: 0.55,
+    },
+    rowIconDisabled: {
+      backgroundColor: colors.surface,
+    },
+    rowLabelDisabled: {
+      color: colors.textFaint,
+    },
+    soonBadge: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+    },
+    soonBadgeText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: colors.textFaint,
     },
     skipRow: {
       paddingVertical: spacing.sm + 2,
