@@ -141,6 +141,15 @@ export default function ChatScreen({ route, navigation }: Props) {
     });
   };
 
+  // Alici/satici bulusmayi tam bu ekranda konusuyor - guvenlik uyarisi tek
+  // satirlik banner'da bogulmasin diye dokununca acilan somut bir liste.
+  const handleSafetyTips = () => {
+    showAlert(
+      'Güvenli Alışveriş',
+      '• Kalabalık, halka açık ve aydınlık bir yerde buluş.\n• Ürünü görüp kontrol etmeden ödeme yapma.\n• Kapora ya da önden havale isteyen satıcıya güvenme.\n• Şüpheli bir davranışla karşılaşırsan profildeki "Şikayet Et" seçeneğini kullan.'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -169,12 +178,13 @@ export default function ChatScreen({ route, navigation }: Props) {
         </IconButton>
       </View>
 
-      <View style={styles.safetyBanner}>
+      <Pressable style={styles.safetyBanner} onPress={handleSafetyTips}>
         <Ionicons name="shield-checkmark-outline" size={13} color={colors.textFaint} />
         <Text style={styles.safetyBannerText}>
-          Kapora göndermeyin, ürünü görmeden ödeme yapmayın.
+          Güvenli buluşma ve ödeme için dokun
         </Text>
-      </View>
+        <Ionicons name="chevron-forward" size={12} color={colors.textFaint} />
+      </Pressable>
 
       <KeyboardAvoidingView
         style={styles.flex}

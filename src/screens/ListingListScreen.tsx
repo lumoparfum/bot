@@ -24,8 +24,8 @@ import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { categories, categoryIcons, conditions, subcategories } from '../types/listing';
-import type { Listing, ListingLocation } from '../types/listing';
+import { categories, categoryIcons, conditions, getAttributeDefs, subcategories } from '../types/listing';
+import type { AttributeDef, Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
 import { fetchBlockedUserIds } from '../services/blocks';
 import { createSavedSearch } from '../services/savedSearches';
@@ -75,10 +75,40 @@ export default function ListingListScreen({ navigation }: Props) {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // Marka/Beden/Numara/Renk gibi kategoriye ozel filtreler - kategori ya da
+  // alt kategori degisince eski secili ozellikler artik gecersiz olabilir
+  // (mesela Giyim'den Elektronik'e gecince "Beden: M" anlamsizlasir), o
+  // yuzden ikisi degisince de sifirlaniyor.
+  const [selectedAttrFilters, setSelectedAttrFilters] = useState<Record<string, string>>({});
 
   const handleSelectCategory = (item: string) => {
     setSelectedCategory(item);
     setSelectedSubcategory(null);
+    setSelectedAttrFilters({});
+  };
+
+  const handleSelectSubcategory = (sub: string | null) => {
+    setSelectedSubcategory(sub);
+    setSelectedAttrFilters({});
+  };
+
+  const attrFilterDefs = useMemo(
+    () =>
+      getAttributeDefs(selectedCategory === ALL ? null : selectedCategory, selectedSubcategory).filter(
+        (def): def is Extract<AttributeDef, { options: string[] }> => def.type !== 'number'
+      ),
+    [selectedCategory, selectedSubcategory]
+  );
+
+  const handleToggleAttrFilter = (key: string, value: string) => {
+    setSelectedAttrFilters((prev) => {
+      if (prev[key] === value) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -96,7 +126,8 @@ export default function ListingListScreen({ navigation }: Props) {
     minPrice !== '' ||
     maxPrice !== '' ||
     locationFilterActive ||
-    selectedCondition !== null;
+    selectedCondition !== null ||
+    Object.keys(selectedAttrFilters).length > 0;
 
   const loadListings = useCallback(async () => {
     try {
@@ -190,6 +221,7 @@ export default function ListingListScreen({ navigation }: Props) {
     setSelectedRadius(null);
     setLocationFilterActive(false);
     setSelectedCondition(null);
+    setSelectedAttrFilters({});
   };
 
   const rows = useMemo(() => {
@@ -213,6 +245,9 @@ export default function ListingListScreen({ navigation }: Props) {
         const matchesSubcategory =
           !selectedSubcategory || listing.subcategory === selectedSubcategory;
         const matchesCondition = !selectedCondition || listing.condition === selectedCondition;
+        const matchesAttrs = Object.entries(selectedAttrFilters).every(
+          ([key, value]) => listing.attributes[key] === value
+        );
         // Baslikla sinirli kalmasin - aciklama ve marka/model/beden gibi
         // yapilandirilmis ozelliklerde de arasin.
         const q = query.trim().toLocaleLowerCase('tr-TR');
@@ -244,6 +279,7 @@ export default function ListingListScreen({ navigation }: Props) {
           matchesCategory &&
           matchesSubcategory &&
           matchesCondition &&
+          matchesAttrs &&
           matchesQuery &&
           matchesLocation &&
           matchesMin &&
@@ -272,6 +308,7 @@ export default function ListingListScreen({ navigation }: Props) {
     selectedCategory,
     selectedSubcategory,
     selectedCondition,
+    selectedAttrFilters,
     query,
     selectedRadius,
     userLocation,
@@ -362,14 +399,14 @@ export default function ListingListScreen({ navigation }: Props) {
                 <CategoryChip
                   label={ALL}
                   selected={selectedSubcategory === null}
-                  onPress={() => setSelectedSubcategory(null)}
+                  onPress={() => handleSelectSubcategory(null)}
                 />
                 {subcategories[selectedCategory].map((sub) => (
                   <CategoryChip
                     key={sub}
                     label={sub}
                     selected={sub === selectedSubcategory}
-                    onPress={() => setSelectedSubcategory(sub)}
+                    onPress={() => handleSelectSubcategory(sub)}
                   />
                 ))}
               </ScrollView>
@@ -536,6 +573,22 @@ export default function ListingListScreen({ navigation }: Props) {
                   />
                 ))}
               </View>
+
+              {attrFilterDefs.map((def) => (
+                <View key={def.key}>
+                  <Text style={styles.filterSectionLabel}>{def.label}</Text>
+                  <View style={styles.sortOptions}>
+                    {def.options.map((option) => (
+                      <CategoryChip
+                        key={option}
+                        label={option}
+                        selected={selectedAttrFilters[def.key] === option}
+                        onPress={() => handleToggleAttrFilter(def.key, option)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ))}
             </ScrollView>
 
             <View style={styles.filterActions}>

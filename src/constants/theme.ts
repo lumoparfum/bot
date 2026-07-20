@@ -28,6 +28,50 @@ export const lightColors = {
   warning: '#F5A623',
 };
 
+// Vurgu rengi (accent) - kullanicinin Ayarlar'dan secebilecegi tercih.
+// BrandMark/Wordmark BILEREK lightColors.primary'yi sabit kullaniyor (marka
+// rengi turuncu kalsin diye) - bu yuzden lightColors/darkColors'in kendisini
+// degistirmek yerine applyAccent ile SADECE useTheme() uzerinden gelen
+// colors objesinde primary/primaryDark/primaryLight'i degistiriyoruz.
+export type AccentKey = 'orange' | 'rose' | 'gold';
+
+export const ACCENT_LABELS: Record<AccentKey, string> = {
+  orange: 'Turuncu',
+  rose: 'Gül',
+  gold: 'Altın',
+};
+
+// Secim noktasinda kucuk bir renk topu gostermek icin - her zaman "acik"
+// (light mode) tondaki primary kullanilir, tema koyu/acik farketmeksizin
+// ayni renk noktasi tutarli gorunsun diye.
+export const ACCENT_SWATCHES: Record<AccentKey, string> = {
+  orange: '#FF6B35',
+  rose: '#E8547A',
+  gold: '#C9932E',
+};
+
+type AccentOverride = { primary: string; primaryDark: string; primaryLight: string };
+
+const ACCENT_OVERRIDES: Record<AccentKey, { light: AccentOverride; dark: AccentOverride }> = {
+  orange: {
+    light: { primary: '#FF6B35', primaryDark: '#E24E17', primaryLight: '#FFE4D6' },
+    dark: { primary: '#FF7A47', primaryDark: '#FF6B35', primaryLight: '#3A2418' },
+  },
+  rose: {
+    light: { primary: '#E8547A', primaryDark: '#C93862', primaryLight: '#FBDCE0' },
+    dark: { primary: '#F2708F', primaryDark: '#E8547A', primaryLight: '#3A1F28' },
+  },
+  gold: {
+    light: { primary: '#C9932E', primaryDark: '#A6741C', primaryLight: '#F7E8C9' },
+    dark: { primary: '#D9A94A', primaryDark: '#C9932E', primaryLight: '#332A16' },
+  },
+};
+
+export function applyAccent(base: ColorPalette, isDark: boolean, accent: AccentKey): ColorPalette {
+  if (accent === 'orange') return base;
+  return { ...base, ...ACCENT_OVERRIDES[accent][isDark ? 'dark' : 'light'] };
+}
+
 export const darkColors: ColorPalette = {
   primary: '#FF7A47',
   primaryDark: '#FF6B35',
