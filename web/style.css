@@ -935,7 +935,13 @@ body::before {
   .phone-frame {
     width: 200px;
     height: 416px;
+    padding: 9px;
+    border-radius: 30px;
     transform: none;
+  }
+
+  .phone-frame .screen {
+    border-radius: 22px;
   }
 
   .hero h1 {
@@ -977,6 +983,7 @@ body::before {
   .store-badge { min-width: 0; flex: 1 1 calc(50% - 6px); }
   .category-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .section-head h2 { font-size: 26px; }
-  .phone-frame { width: 172px; height: 358px; }
+  .phone-frame { width: 172px; height: 358px; padding: 7px; border-radius: 26px; }
+  .phone-frame .screen { border-radius: 19px; }
   .download-band h2 { font-size: 22px; }
 }
