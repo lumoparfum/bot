@@ -156,7 +156,23 @@ export default function SettingsScreen({ navigation }: Props) {
   const handleSignOut = () => {
     showAlert('Çıkış Yap', 'Hesabından çıkış yapmak istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: signOut },
+      {
+        text: 'Çıkış Yap',
+        style: 'destructive',
+        onPress: () => {
+          // signOut() basarisiz olursa (ag hatasi vb.) onceden sessizce
+          // hicbir sey olmuyordu - kullanici hala giris yapmis halde
+          // kalip neden ciktigini/cikamadigini anlayamiyordu. Basarili
+          // olsa bile geri yonlendirme yoktu, kullanici bos/bozuk gorunen
+          // ayni Ayarlar ekraninda kaliyordu - ProfileHome zaten misafir
+          // durumunu duzgun gosteriyor, oraya donuyoruz.
+          signOut()
+            .then(() => navigation.navigate('ProfileHome'))
+            .catch(() => {
+              showAlert('Hata', 'Çıkış yapılamadı, tekrar dene.');
+            });
+        },
+      },
     ]);
   };
 
