@@ -63,7 +63,7 @@ const FAQ_ITEMS: FaqItem[] = [
     id: 'expiry',
     question: 'İlanım ne zaman kaldırılır?',
     answer:
-      'İlanlar güncel kalsın diye yayından 15 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir. Ürünü sattıysan ilan sayfasından "Satıldı" olarak işaretleyebilirsin.',
+      'İlanlar güncel kalsın diye yayından 35 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir. Ürünü sattıysan ilan sayfasından "Satıldı" olarak işaretleyebilirsin.',
   },
   {
     id: 'delete',

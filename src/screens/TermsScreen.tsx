@@ -43,7 +43,7 @@ const SECTIONS: Section[] = [
   },
   {
     heading: '8. Verilerin Kullanımı ve Saklanması',
-    body: 'Verilerin tamamı Google Firebase altyapısında saklanır ve yalnızca uygulamanın çalışması için (ilanların gösterilmesi, mesajlaşma, bildirimler) kullanılır. Üçüncü taraflarla pazarlama amaçlı paylaşılmaz. Depolama alanını verimli kullanmak için ilanlar yayından 15 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir.',
+    body: 'Verilerin tamamı Google Firebase altyapısında saklanır ve yalnızca uygulamanın çalışması için (ilanların gösterilmesi, mesajlaşma, bildirimler) kullanılır. Üçüncü taraflarla pazarlama amaçlı paylaşılmaz. Depolama alanını verimli kullanmak için ilanlar yayından 35 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir.',
   },
   {
     heading: '9. Bildirimler',

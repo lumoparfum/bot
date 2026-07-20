@@ -11,7 +11,7 @@ const db = getFirestore();
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const REGION = 'europe-west1';
-const LISTING_LIFETIME_DAYS = 15;
+const LISTING_LIFETIME_DAYS = 35;
 
 async function sendPush(pushToken, title, body, data) {
   if (!pushToken) return;
