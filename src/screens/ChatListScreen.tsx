@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { showAlert } from '../components/AppAlert';
 import { GuestPrompt } from '../components/GuestPrompt';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -69,7 +70,7 @@ export default function ChatListScreen({ navigation }: Props) {
   const handleDeleteSelected = () => {
     if (!user || selectedIds.size === 0) return;
     const count = selectedIds.size;
-    Alert.alert(
+    showAlert(
       'Sohbetleri Sil',
       `${count} sohbet mesaj listenden kaldırılacak. Emin misin?`,
       [
@@ -77,10 +78,15 @@ export default function ChatListScreen({ navigation }: Props) {
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: () => {
-            selectedIds.forEach((id) => deleteConversationForUser(id, user.uid).catch(() => {}));
+          onPress: async () => {
+            const results = await Promise.allSettled(
+              Array.from(selectedIds).map((id) => deleteConversationForUser(id, user.uid))
+            );
             setSelectionMode(false);
             setSelectedIds(new Set());
+            if (results.some((r) => r.status === 'rejected')) {
+              showAlert('Hata', 'Bazı sohbetler silinemedi, tekrar dene.');
+            }
           },
         },
       ]

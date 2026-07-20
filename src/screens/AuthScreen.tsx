@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { showAlert } from '../components/AppAlert';
 import { BrandMark } from '../components/BrandMark';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { Wordmark } from '../components/Wordmark';
 import { signInWithGoogle } from '../services/authService';
 import { spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -36,7 +38,7 @@ export default function AuthScreen({ navigation }: Props) {
   // TODO: Apple Developer üyeliği alınıp expo-apple-authentication
   // yapılandırıldığında gerçek Apple ile giriş buraya bağlanacak.
   const handleAppleSignIn = () => {
-    Alert.alert('Yakında', 'Apple ile giriş çok yakında aktif olacak.');
+    showAlert('Yakında', 'Apple ile giriş çok yakında aktif olacak.');
   };
 
   return (
@@ -53,8 +55,8 @@ export default function AuthScreen({ navigation }: Props) {
       <View style={styles.content}>
         <View style={styles.brandBlock}>
           <BrandMark size={64} />
-          <Text style={styles.title}>Stop82</Text>
-          <Text style={styles.subtitle}>İkinci el, ilk elden fırsat</Text>
+          <Wordmark size={34} />
+          <Text style={styles.subtitle}>Ücretsiz. Güvenli. Yakınında.</Text>
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
@@ -111,10 +113,6 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
       gap: spacing.md,
       marginBottom: spacing.xxl,
-    },
-    title: {
-      ...typography.largeTitle,
-      color: colors.text,
     },
     subtitle: {
       ...typography.subhead,

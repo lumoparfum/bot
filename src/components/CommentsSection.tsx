@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -15,6 +15,7 @@ import {
 } from '../services/comments';
 import { submitReport } from '../services/reports';
 import { formatRelativeDate } from '../utils/format';
+import { showAlert } from './AppAlert';
 import { ReportModal } from './ReportModal';
 import type { ListingComment } from '../types/comment';
 
@@ -50,12 +51,12 @@ export function CommentsSection({ listingId, listingSellerId }: Props) {
     if (!trimmed || sending) return;
 
     if (containsBannedWord(trimmed)) {
-      Alert.alert('Uygun Olmayan İçerik', 'Yorumun uygunsuz kelimeler içeriyor, lütfen düzenle.');
+      showAlert('Uygun Olmayan İçerik', 'Yorumun uygunsuz kelimeler içeriyor, lütfen düzenle.');
       return;
     }
     const secondsSinceLast = (Date.now() - lastSentAt.current) / 1000;
     if (secondsSinceLast < MIN_SECONDS_BETWEEN_COMMENTS) {
-      Alert.alert('Yavaş Ol', 'Çok hızlı yorum gönderiyorsun, birkaç saniye bekle.');
+      showAlert('Yavaş Ol', 'Çok hızlı yorum gönderiyorsun, birkaç saniye bekle.');
       return;
     }
 
@@ -65,23 +66,37 @@ export function CommentsSection({ listingId, listingSellerId }: Props) {
       lastSentAt.current = Date.now();
       setText('');
     } catch {
-      Alert.alert('Hata', 'Yorum gönderilemedi, tekrar dene.');
+      showAlert('Hata', 'Yorum gönderilemedi, tekrar dene.');
     } finally {
       setSending(false);
     }
   };
 
   const handleHide = (comment: ListingComment) => {
-    Alert.alert('Yorumu Gizle', 'Bu yorum ilanda kimseye gösterilmeyecek. Emin misin?', [
+    showAlert('Yorumu Gizle', 'Bu yorum ilanda kimseye gösterilmeyecek. Emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Gizle', style: 'destructive', onPress: () => hideComment(listingId, comment.id).catch(() => {}) },
+      {
+        text: 'Gizle',
+        style: 'destructive',
+        onPress: () =>
+          hideComment(listingId, comment.id).catch(() =>
+            showAlert('Hata', 'Yorum gizlenemedi, tekrar dene.')
+          ),
+      },
     ]);
   };
 
   const handleDeleteOwn = (comment: ListingComment) => {
-    Alert.alert('Yorumu Sil', 'Yorumunu silmek istediğine emin misin?', [
+    showAlert('Yorumu Sil', 'Yorumunu silmek istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Sil', style: 'destructive', onPress: () => deleteOwnComment(listingId, comment.id).catch(() => {}) },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () =>
+          deleteOwnComment(listingId, comment.id).catch(() =>
+            showAlert('Hata', 'Yorum silinemedi, tekrar dene.')
+          ),
+      },
     ]);
   };
 
@@ -170,6 +185,7 @@ export function CommentsSection({ listingId, listingSellerId }: Props) {
       <ReportModal
         visible={!!reportTarget}
         title="Yorumu Şikayet Et"
+        reportType="comment"
         onClose={() => setReportTarget(null)}
         onSubmit={handleSubmitReport}
       />

@@ -30,27 +30,31 @@ const SECTIONS: Section[] = [
     body: 'İlan açıklamaları, fotoğraflar, yorumlar ve mesajlar dahil paylaştığın her içerikten sen sorumlusun. Uygunsuz, hakaret içeren ya da yanıltıcı içerikleri kaldırma ve ilgili hesabı kısıtlama hakkımızı saklı tutarız. Diğer kullanıcılar tarafından paylaşılan içerikleri "Şikayet Et" özelliğiyle bize bildirebilirsin; şikayetler incelenmek üzere kayıt altına alınır.',
   },
   {
-    heading: '5. Sorumluluk Reddi',
+    heading: '5. İşletme Hesabı Beyanı',
+    body: 'İşletme hesabı, kullanıcının Ayarlar\'dan firma adı ve iş tanımıyla yaptığı bir başvurudur. Stop82 ekibi başvuruyu makul ölçüde inceler ve uygun gördüğü başvuruları onaylar. Ancak bu inceleme, sunulan bilgilerin resmi kurumlar (vergi dairesi, ticaret sicili vb.) nezdinde doğrulandığı anlamına gelmez. Başvuruda yanlış ya da yanıltıcı bilgi verilmesinden doğacak her türlü sorumluluk, incelemenin sonucundan bağımsız olarak, beyanı yapan kullanıcıya aittir.',
+  },
+  {
+    heading: '6. Sorumluluk Reddi',
     body: 'Stop82, kullanıcılar arasında gerçekleşen alışverişlerin sonucundan (ürün kalitesi, teslim edilmemesi, ödeme anlaşmazlıkları vb.) sorumlu tutulamaz. Bir kullanıcıyla anlaşmazlık yaşarsan öncelikle karşılıklı çözüm aramanı, gerekirse yetkili mercilere başvurmanı öneririz.',
   },
   {
-    heading: '6. Topladığımız Veriler',
+    heading: '7. Topladığımız Veriler',
     body: 'Google hesabınla giriş yaptığında adın, e-posta adresin ve profil fotoğrafın alınır. İlan verirken yüklediğin fotoğraflar, yazdığın açıklamalar ve (izin verirsen) konumun (GPS ya da elle seçtiğin şehir) kaydedilir. Uygulama içi gönderdiğin mesajlar ve yorumlar, hizmeti sağlayabilmemiz için saklanır.',
   },
   {
-    heading: '7. Verilerin Kullanımı ve Saklanması',
+    heading: '8. Verilerin Kullanımı ve Saklanması',
     body: 'Verilerin tamamı Google Firebase altyapısında saklanır ve yalnızca uygulamanın çalışması için (ilanların gösterilmesi, mesajlaşma, bildirimler) kullanılır. Üçüncü taraflarla pazarlama amaçlı paylaşılmaz. Depolama alanını verimli kullanmak için ilanlar yayından 15 gün sonra fotoğraflarıyla birlikte otomatik olarak silinir.',
   },
   {
-    heading: '8. Bildirimler',
+    heading: '9. Bildirimler',
     body: 'İzin verirsen, yeni mesaj ya da ilanına gelen beğeni gibi olaylarda telefonuna anlık bildirim gönderebiliriz. Bu izni istediğin zaman telefonunun ayarlarından kapatabilirsin.',
   },
   {
-    heading: '9. Hesabını Silmek',
+    heading: '10. Hesabını Silmek',
     body: 'Ayarlar sayfasının en altındaki "Hesabımı Kalıcı Olarak Sil" seçeneğiyle hesabını ve tüm verilerini (ilanların, favorilerin, mesajların, değerlendirmelerin) anında ve kalıcı olarak silebilirsin. Bu işlem geri alınamaz.',
   },
   {
-    heading: '10. Değişiklikler',
+    heading: '11. Değişiklikler',
     body: 'Bu şartları zaman zaman güncelleyebiliriz. Önemli değişikliklerde seni uygulama içinden bilgilendirmeye çalışırız.',
   },
 ];

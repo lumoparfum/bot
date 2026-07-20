@@ -17,12 +17,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { showAlert } from '../components/AppAlert';
 import { IconButton } from '../components/IconButton';
 import { OfferModal } from '../components/OfferModal';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { blockUser } from '../services/blocks';
 import {
+  deleteConversationForUser,
   markConversationRead,
   respondToOffer,
   sendMessage,
@@ -81,9 +84,48 @@ export default function ChatScreen({ route, navigation }: Props) {
     setSending(true);
     try {
       await sendMessage(conversationId, user.uid, otherUserId, value);
+    } catch (error: any) {
+      // Basarisiz olursa yazdigin mesaj kaybolmasin diye kutuya geri koyuyoruz.
+      setText(value);
+      if (error?.code === 'permission-denied') {
+        showAlert('Mesaj gönderilemedi', 'Bu kullanıcıya mesaj gönderemiyorsun.');
+      } else {
+        showAlert('Hata', 'Mesaj gönderilemedi. İnternet bağlantını kontrol edip tekrar dene.');
+      }
     } finally {
       setSending(false);
     }
+  };
+
+  const handleBlock = () => {
+    if (!user) return;
+    showAlert(
+      'Kullanıcıyı Engelle',
+      `${otherUserName} bir daha sana mesaj gönderemeyecek. Bu sohbet mesaj listenden kaldırılacak. Emin misin?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Engelle',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(user.uid, otherUserId);
+              await deleteConversationForUser(conversationId, user.uid);
+              navigation.goBack();
+            } catch {
+              showAlert('Hata', 'Engellenemedi, tekrar dene.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMoreOptions = () => {
+    showAlert(otherUserName, undefined, [
+      { text: 'Kullanıcıyı Engelle', style: 'destructive', onPress: handleBlock },
+      { text: 'Vazgeç', style: 'cancel' },
+    ]);
   };
 
   const handleSendOffer = async (amount: number) => {
@@ -92,7 +134,9 @@ export default function ChatScreen({ route, navigation }: Props) {
   };
 
   const handleRespondToOffer = (message: ChatMessage, status: 'accepted' | 'declined') => {
-    respondToOffer(conversationId, message.id, status).catch(() => {});
+    respondToOffer(conversationId, message.id, status).catch(() => {
+      showAlert('Hata', 'İşlem gerçekleştirilemedi, tekrar dene.');
+    });
   };
 
   return (
@@ -118,6 +162,16 @@ export default function ChatScreen({ route, navigation }: Props) {
             </Text>
           </View>
         </Pressable>
+        <IconButton onPress={handleMoreOptions} accessibilityLabel="Diğer seçenekler">
+          <Ionicons name="ellipsis-horizontal" size={18} color={colors.text} />
+        </IconButton>
+      </View>
+
+      <View style={styles.safetyBanner}>
+        <Ionicons name="shield-checkmark-outline" size={13} color={colors.textFaint} />
+        <Text style={styles.safetyBannerText}>
+          Kapora göndermeyin, ürünü görmeden ödeme yapmayın.
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -249,6 +303,20 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: colors.divider,
+    },
+    safetyBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingVertical: 6,
+      paddingHorizontal: spacing.md,
+      backgroundColor: colors.surface,
+    },
+    safetyBannerText: {
+      ...typography.caption,
+      fontSize: 11,
+      color: colors.textFaint,
     },
     headerIdentity: {
       flex: 1,

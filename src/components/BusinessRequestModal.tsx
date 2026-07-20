@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -11,58 +11,45 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
-import { useTheme } from '../context/ThemeContext';
 import { showAlert } from './AppAlert';
 import { PrimaryButton } from './PrimaryButton';
-import { StarRating } from './StarRating';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   visible: boolean;
-  targetName: string;
   onClose: () => void;
-  onSubmit: (rating: number, comment: string) => Promise<void>;
-  // Kullanici bu kisiyi daha once degerlendirdiyse, bos formla degil kendi
-  // onceki puan/yorumuyla acilsin - aksi halde "sadece yorumu duzeltecektim"
-  // diyen biri sifirdan degerlendirme yapmak zorunda kaliyordu.
-  initialRating?: number;
-  initialComment?: string;
+  onSubmit: (companyName: string, description: string) => Promise<void>;
 };
 
-export function RatingModal({
-  visible,
-  targetName,
-  onClose,
-  onSubmit,
-  initialRating,
-  initialComment,
-}: Props) {
+export function BusinessRequestModal({ visible, onClose, onSubmit }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const [rating, setRating] = useState(initialRating ?? 5);
-  const [comment, setComment] = useState(initialComment ?? '');
+  const [companyName, setCompanyName] = useState('');
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      setRating(initialRating ?? 5);
-      setComment(initialComment ?? '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  const canSubmit = companyName.trim().length >= 2 && description.trim().length >= 10;
 
   const handleClose = () => {
+    setCompanyName('');
+    setDescription('');
     onClose();
   };
 
   const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
     try {
-      await onSubmit(rating, comment);
+      await onSubmit(companyName, description);
       handleClose();
+      showAlert(
+        'Başvurun Alındı',
+        'Stop82 ekibi başvurunu inceleyecek. Sonucu Ayarlar sayfasından ve bildirimlerden takip edebilirsin.'
+      );
     } catch {
-      showAlert('Hata', 'Değerlendirme gönderilemedi, tekrar dene.');
+      showAlert('Hata', 'Başvuru gönderilemedi, tekrar dene.');
     } finally {
       setSubmitting(false);
     }
@@ -76,30 +63,42 @@ export function RatingModal({
       >
         <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>{targetName} kullanıcısını değerlendir</Text>
+            <Text style={styles.title}>İşletme Hesabı Başvurusu</Text>
             <Pressable onPress={handleClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
             </Pressable>
           </View>
 
-          <View style={styles.starsRow}>
-            <StarRating value={rating} size={32} onChange={setRating} />
-          </View>
+          <Text style={styles.hint}>
+            Bilgiler Stop82 ekibi tarafından incelenir. Onaylanırsa profilinde "İşletme" rozeti
+            görünür. Yanlış ya da yanıltıcı bilgi vermenin sorumluluğu tamamen sana aittir.
+          </Text>
 
+          <Text style={styles.label}>Firma Adı</Text>
           <TextInput
-            style={styles.commentInput}
-            placeholder="Deneyimini kısaca anlat (opsiyonel)"
+            style={styles.input}
+            placeholder="Örn. Stop82 Elektronik Ltd. Şti."
             placeholderTextColor={colors.textFaint}
-            value={comment}
-            onChangeText={setComment}
+            value={companyName}
+            onChangeText={setCompanyName}
+          />
+
+          <Text style={styles.label}>Ne İş Yapıyorsunuz?</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Kısaca firmanı ve ne sattığını anlat..."
+            placeholderTextColor={colors.textFaint}
+            value={description}
+            onChangeText={setDescription}
             multiline
             textAlignVertical="top"
           />
 
           <PrimaryButton
-            label={initialRating ? 'Değerlendirmeyi Güncelle' : 'Gönder'}
+            label="Başvuruyu Gönder"
             onPress={handleSubmit}
             loading={submitting}
+            disabled={!canSubmit}
           />
         </View>
       </KeyboardAvoidingView>
@@ -132,11 +131,18 @@ function createStyles(colors: ColorPalette) {
       flex: 1,
       marginRight: spacing.sm,
     },
-    starsRow: {
-      alignItems: 'center',
-      paddingVertical: spacing.sm,
+    hint: {
+      ...typography.caption,
+      color: colors.textFaint,
+      lineHeight: 17,
+      marginTop: -spacing.sm,
     },
-    commentInput: {
+    label: {
+      ...typography.footnote,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    input: {
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radius.md,
@@ -144,7 +150,16 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.md,
       fontSize: 15,
       color: colors.text,
-      minHeight: 80,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      fontSize: 15,
+      color: colors.text,
+      minHeight: 90,
     },
   });
 }

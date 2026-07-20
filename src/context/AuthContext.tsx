@@ -1,11 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import type { ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 import { signOutUser } from '../services/authService';
 import { ensureUserProfile } from '../services/firestore';
 import { registerForPushNotificationsAsync, savePushToken } from '../services/notifications';
+
+function touchLastActive(uid: string) {
+  updateDoc(doc(db, 'users', uid), { lastActiveAt: serverTimestamp() }).catch(() => {});
+}
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -39,6 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
     return unsubscribe;
+  }, []);
+
+  // "Son gorulme" rozeti icin - uygulama on plana her donduğunde (soguk
+  // acilis onAuthStateChanged ile zaten kapsanir) tazelenir.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && auth.currentUser) {
+        touchLastActive(auth.currentUser.uid);
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   const refreshUser = async () => {

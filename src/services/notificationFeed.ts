@@ -25,7 +25,7 @@ function mapNotification(id: string, data: DocumentData): AppNotification {
     listingId: data.listingId ?? null,
     listingImage: data.listingImage ?? null,
     conversationId: data.conversationId ?? null,
-    fromUserId: data.fromUserId,
+    fromUserId: data.fromUserId ?? null,
     fromUserName: data.fromUserName,
     fromUserPhoto: data.fromUserPhoto ?? null,
     read: data.read ?? false,

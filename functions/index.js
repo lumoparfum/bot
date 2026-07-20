@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
@@ -15,11 +15,17 @@ const LISTING_LIFETIME_DAYS = 15;
 
 async function sendPush(pushToken, title, body, data) {
   if (!pushToken) return;
-  await fetch(EXPO_PUSH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ to: pushToken, title, body, data }),
-  });
+  try {
+    await fetch(EXPO_PUSH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ to: pushToken, title, body, data }),
+    });
+  } catch {
+    // Push bildirimi best-effort bir yan etki - basarisiz olursa (Expo API
+    // gecici kesinti vb.) cagiran fonksiyondaki asil islevi (bildirim kaydi,
+    // yanit orani takibi vb.) engellememeli.
+  }
 }
 
 exports.onNewMessage = onDocumentCreated(
@@ -29,7 +35,8 @@ exports.onNewMessage = onDocumentCreated(
     if (!message) return;
 
     const { conversationId } = event.params;
-    const conversationSnap = await db.doc(`conversations/${conversationId}`).get();
+    const conversationRef = db.doc(`conversations/${conversationId}`);
+    const conversationSnap = await conversationRef.get();
     const conversation = conversationSnap.data();
     if (!conversation) return;
 
@@ -65,6 +72,51 @@ exports.onNewMessage = onDocumentCreated(
       otherUserPhoto: senderPhoto ?? null,
       listingTitle: conversation.listingTitle,
     });
+
+    // Yanit orani/suresi takibi: satici profilinde "genelde X icinde
+    // yanitliyor" rozeti icin - sadece ilan sahibinin (seller) alicinin ilk
+    // mesajina verdigi ilk yanit olculur, sonraki mesajlar sayilmaz.
+    // Transaction icinde: alici arka arkaya hizli iki mesaj gonderirse (ör.
+    // hazir cevap cipine cift dokunma), iki tetikleyici ayni anda calisip
+    // ikisi de "firstBuyerMessageAt henuz yok" gorup contactedCount'u iki kez
+    // artirabilirdi - bu da saticinin yanit oranini haksiz yere dusururdu.
+    if (conversation.sellerId && conversation.buyerId) {
+      if (message.senderId === conversation.buyerId) {
+        await db
+          .runTransaction(async (tx) => {
+            const snap = await tx.get(conversationRef);
+            const conv = snap.data();
+            if (!conv || conv.firstBuyerMessageAt) return;
+            tx.update(conversationRef, { firstBuyerMessageAt: message.createdAt });
+            tx.set(
+              db.doc(`users/${conversation.sellerId}`),
+              { contactedCount: FieldValue.increment(1) },
+              { merge: true }
+            );
+          })
+          .catch(() => {});
+      } else if (message.senderId === conversation.sellerId) {
+        await db
+          .runTransaction(async (tx) => {
+            const snap = await tx.get(conversationRef);
+            const conv = snap.data();
+            if (!conv || !conv.firstBuyerMessageAt || conv.sellerResponded) return;
+            const firstMs = conv.firstBuyerMessageAt.toMillis();
+            const replyMs = message.createdAt.toMillis();
+            const diffMinutes = Math.max(0, Math.round((replyMs - firstMs) / 60000));
+            tx.update(conversationRef, { sellerResponded: true });
+            tx.set(
+              db.doc(`users/${conversation.sellerId}`),
+              {
+                responseCount: FieldValue.increment(1),
+                responseTimeTotalMinutes: FieldValue.increment(diffMinutes),
+              },
+              { merge: true }
+            );
+          })
+          .catch(() => {});
+      }
+    }
   }
 );
 
@@ -72,9 +124,14 @@ exports.onNewFavorite = onDocumentCreated(
   { document: 'users/{userId}/favorites/{listingId}', region: REGION },
   async (event) => {
     const { userId, listingId } = event.params;
-    const listingSnap = await db.doc(`listings/${listingId}`).get();
+    const listingRef = db.doc(`listings/${listingId}`);
+    const listingSnap = await listingRef.get();
     const listing = listingSnap.data();
-    if (!listing || listing.sellerId === userId) return;
+    if (!listing) return;
+
+    await listingRef.update({ favoriteCount: FieldValue.increment(1) }).catch(() => {});
+
+    if (listing.sellerId === userId) return;
 
     const raterSnap = await db.doc(`users/${userId}`).get();
     const rater = raterSnap.data();
@@ -101,6 +158,17 @@ exports.onNewFavorite = onDocumentCreated(
       `"${listing.title}" ilanını beğendi`,
       { listingId }
     );
+  }
+);
+
+exports.onFavoriteRemoved = onDocumentDeleted(
+  { document: 'users/{userId}/favorites/{listingId}', region: REGION },
+  async (event) => {
+    const { listingId } = event.params;
+    await db
+      .doc(`listings/${listingId}`)
+      .update({ favoriteCount: FieldValue.increment(-1) })
+      .catch(() => {});
   }
 );
 
@@ -165,6 +233,41 @@ exports.onNewListingMatchSavedSearches = onDocumentCreated(
   }
 );
 
+// Stop82 ekibi Firebase Console'dan bir isletme basvurusunun status alanini
+// 'approved' veya 'rejected' yaptiginda, kullanicinin accountType'i otomatik
+// senkronize edilir - ayri bir manuel adima gerek kalmaz.
+exports.onBusinessRequestReviewed = onDocumentUpdated(
+  { document: 'businessRequests/{requestId}', region: REGION },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after || before.status === after.status) return;
+
+    if (after.status === 'approved') {
+      await db.doc(`users/${after.uid}`).set({ accountType: 'business' }, { merge: true });
+    } else if (after.status === 'rejected') {
+      await db.doc(`users/${after.uid}`).set({ accountType: 'individual' }, { merge: true });
+    }
+
+    await db.collection('users').doc(after.uid).collection('notifications').add({
+      type: 'business',
+      title: after.status === 'approved' ? 'İşletme başvurun onaylandı' : 'İşletme başvurun reddedildi',
+      body:
+        after.status === 'approved'
+          ? `"${after.companyName}" için işletme rozeti profilinde aktif.`
+          : `"${after.companyName}" başvurusu onaylanmadı.`,
+      listingId: null,
+      listingImage: null,
+      conversationId: null,
+      fromUserId: null,
+      fromUserName: 'Stop82',
+      fromUserPhoto: null,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+);
+
 exports.deleteAccount = onCall({ region: REGION }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Önce giriş yapmalısın.');
@@ -179,6 +282,9 @@ exports.deleteAccount = onCall({ region: REGION }, async (request) => {
       await docSnap.ref.delete();
     })
   );
+
+  // Profil fotografini da sil - aksi halde storage'da sahipsiz bir dosya kalir.
+  await bucket.deleteFiles({ prefix: `avatars/${uid}/` }).catch(() => {});
 
   // Kayitli aramalarini sil.
   const searchesSnap = await db.collection('savedSearches').where('uid', '==', uid).get();

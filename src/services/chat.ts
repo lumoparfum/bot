@@ -6,6 +6,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -93,20 +94,24 @@ export async function getOrCreateConversation(params: {
       hiddenFor: [],
     });
   }
-
-  // Iki tarafin da birbirini degerlendirebilmesi icin "gercekten konustular"
-  // isareti - reviews kurali bu kayda bakiyor. If-bloğunun disinda cagriliyor
-  // ki bu guncellemeden once acilmis eski sohbetler icin de geriye donuk
-  // olusturulsun (idempotent, zaten varsa sessizce ustune yazar).
-  await Promise.all([
-    setDoc(doc(db, 'users', params.buyerId, 'contacts', params.sellerId), {
-      createdAt: serverTimestamp(),
-    }),
-    setDoc(doc(db, 'users', params.sellerId, 'contacts', params.buyerId), {
-      createdAt: serverTimestamp(),
-    }),
-  ]);
   return id;
+}
+
+// Bir ilan icin gercekten mesajlasilmis (bos olmayan) konusmalardaki
+// alicilari listeler - satici "satildi" derken "kime sattin" secimi icin.
+export async function fetchListingBuyers(
+  listingId: string
+): Promise<{ buyerId: string; buyerName: string; buyerPhotoURL: string | null }[]> {
+  const q = query(collection(db, 'conversations'), where('listingId', '==', listingId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map((d) => d.data())
+    .filter((c) => c.lastMessage !== '')
+    .map((c) => ({
+      buyerId: c.buyerId,
+      buyerName: c.buyerName,
+      buyerPhotoURL: c.buyerPhotoURL ?? null,
+    }));
 }
 
 export function subscribeToConversations(

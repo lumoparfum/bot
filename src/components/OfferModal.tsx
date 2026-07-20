@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from './AppAlert';
 import { PrefixInput } from './PrefixInput';
 import { PrimaryButton } from './PrimaryButton';
+import { formatNumberInput } from '../utils/format';
 
 type Props = {
   visible: boolean;
@@ -32,6 +34,12 @@ export function OfferModal({ visible, onClose, onSubmit }: Props) {
     try {
       await onSubmit(value);
       handleClose();
+    } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        showAlert('Teklif gönderilemedi', 'Bu kullanıcıya teklif gönderemiyorsun.');
+      } else {
+        showAlert('Hata', 'Teklif gönderilemedi, tekrar dene.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +61,7 @@ export function OfferModal({ visible, onClose, onSubmit }: Props) {
 
           <PrefixInput
             prefix="₺"
-            value={amount}
+            value={formatNumberInput(amount)}
             onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ''))}
             placeholder="0"
             keyboardType="number-pad"

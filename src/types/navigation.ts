@@ -12,6 +12,7 @@ export type ProfileStackParamList = {
   ProfileHome: undefined;
   Settings: undefined;
   Terms: undefined;
+  Help: undefined;
 };
 
 export type MessagesStackParamList = {
@@ -27,7 +28,7 @@ export type MessagesStackParamList = {
 
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
-  AddListing: undefined;
+  AddListing: { editListingId?: string } | undefined;
   Messages: NavigatorScreenParams<MessagesStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };

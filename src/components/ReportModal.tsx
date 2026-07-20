@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,36 +13,52 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from './AppAlert';
+import { CategoryChip } from './CategoryChip';
 import { PrimaryButton } from './PrimaryButton';
+import type { ReportType } from '../types/report';
+
+const REASON_OPTIONS: Record<ReportType, string[]> = {
+  listing: ['Sahte İlan', 'Dolandırıcılık', 'Yanlış Kategori', 'Uygunsuz İçerik', 'Diğer'],
+  user: ['Dolandırıcılık', 'Küfür/Hakaret', 'Sahte Profil', 'Diğer'],
+  comment: ['Küfür/Hakaret', 'Spam', 'Yanıltıcı Bilgi', 'Diğer'],
+};
 
 type Props = {
   visible: boolean;
   title: string;
+  reportType: ReportType;
   onClose: () => void;
   onSubmit: (reason: string) => Promise<void>;
 };
 
-export function ReportModal({ visible, title, onClose, onSubmit }: Props) {
+export function ReportModal({ visible, title, reportType, onClose, onSubmit }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const [reason, setReason] = useState('');
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [detail, setDetail] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const requiresDetail = selectedReason === 'Diğer';
+  const canSubmit = !!selectedReason && (!requiresDetail || detail.trim().length > 0);
+
   const handleClose = () => {
-    setReason('');
+    setSelectedReason(null);
+    setDetail('');
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!reason.trim() || submitting) return;
+    if (!canSubmit || submitting || !selectedReason) return;
+    const finalReason = detail.trim() ? `${selectedReason}: ${detail.trim()}` : selectedReason;
     setSubmitting(true);
     try {
-      await onSubmit(reason);
+      await onSubmit(finalReason);
       handleClose();
-      Alert.alert('Teşekkürler', 'Şikayetin bize ulaştı, inceleyeceğiz.');
+      showAlert('Teşekkürler', 'Şikayetin bize ulaştı, inceleyeceğiz.');
     } catch {
-      Alert.alert('Hata', 'Şikayet gönderilemedi, tekrar dene.');
+      showAlert('Hata', 'Şikayet gönderilemedi, tekrar dene.');
     } finally {
       setSubmitting(false);
     }
@@ -63,22 +78,35 @@ export function ReportModal({ visible, title, onClose, onSubmit }: Props) {
             </Pressable>
           </View>
 
+          <Text style={styles.label}>Sebep seç</Text>
+          <View style={styles.chipWrap}>
+            {REASON_OPTIONS[reportType].map((option) => (
+              <CategoryChip
+                key={option}
+                label={option}
+                selected={selectedReason === option}
+                onPress={() => setSelectedReason(option)}
+              />
+            ))}
+          </View>
+
           <TextInput
             style={styles.input}
-            placeholder="Neden şikayet ediyorsun? (ör. dolandırıcılık, uygunsuz içerik...)"
+            placeholder={
+              requiresDetail ? 'Lütfen kısaca açıkla...' : 'Ek detay eklemek istersen yazabilirsin (opsiyonel)'
+            }
             placeholderTextColor={colors.textFaint}
-            value={reason}
-            onChangeText={setReason}
+            value={detail}
+            onChangeText={setDetail}
             multiline
             textAlignVertical="top"
-            autoFocus
           />
 
           <PrimaryButton
             label="Şikayet Gönder"
             onPress={handleSubmit}
             loading={submitting}
-            disabled={!reason.trim()}
+            disabled={!canSubmit}
           />
         </View>
       </KeyboardAvoidingView>
@@ -111,6 +139,16 @@ function createStyles(colors: ColorPalette) {
       flex: 1,
       marginRight: spacing.sm,
     },
+    label: {
+      ...typography.footnote,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    chipWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
     input: {
       borderWidth: 1,
       borderColor: colors.border,
@@ -119,7 +157,7 @@ function createStyles(colors: ColorPalette) {
       paddingVertical: spacing.md,
       fontSize: 15,
       color: colors.text,
-      minHeight: 90,
+      minHeight: 70,
     },
   });
 }

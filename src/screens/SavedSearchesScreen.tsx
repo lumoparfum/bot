@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { showAlert } from '../components/AppAlert';
 import { IconButton } from '../components/IconButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -52,14 +53,17 @@ export default function SavedSearchesScreen({ navigation }: Props) {
   );
 
   const handleDelete = (search: SavedSearch) => {
-    Alert.alert('Kayıtlı Aramayı Sil', 'Bu aramayı silmek istediğine emin misin?', [
+    showAlert('Kayıtlı Aramayı Sil', 'Bu aramayı silmek istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       {
         text: 'Sil',
         style: 'destructive',
         onPress: () => {
           setSearches((prev) => prev.filter((s) => s.id !== search.id));
-          deleteSavedSearch(search.id).catch(() => {});
+          deleteSavedSearch(search.id).catch(() => {
+            setSearches((prev) => [...prev, search]);
+            showAlert('Hata', 'Arama silinemedi, tekrar dene.');
+          });
         },
       },
     ]);

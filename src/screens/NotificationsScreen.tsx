@@ -27,6 +27,8 @@ function notificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMa
       return 'heart';
     case 'savedSearch':
       return 'bookmark';
+    case 'business':
+      return 'briefcase';
     case 'message':
     default:
       return 'chatbubble';
@@ -49,7 +51,7 @@ export default function NotificationsScreen({ navigation }: Props) {
         screen: 'Chat',
         params: {
           conversationId: notification.conversationId,
-          otherUserId: notification.fromUserId,
+          otherUserId: notification.fromUserId ?? '',
           otherUserName: notification.fromUserName,
           otherUserPhoto: notification.fromUserPhoto,
           listingTitle: '',

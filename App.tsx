@@ -8,6 +8,7 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import { AppAlertProvider } from './src/components/AppAlert';
 import { AuthProvider } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
 import { MessagesProvider } from './src/context/MessagesContext';
@@ -30,22 +31,37 @@ function ThemedApp() {
             otherUserName?: string;
             otherUserPhoto?: string | null;
             listingTitle?: string;
+            listingId?: string;
           }
         | undefined;
-      if (!data?.conversationId || !navigationRef.isReady()) return;
-      navigationRef.navigate('Main', {
-        screen: 'Messages',
-        params: {
-          screen: 'Chat',
+      if (!data || !navigationRef.isReady()) return;
+
+      if (data.conversationId) {
+        navigationRef.navigate('Main', {
+          screen: 'Messages',
           params: {
-            conversationId: data.conversationId,
-            otherUserId: data.otherUserId ?? '',
-            otherUserName: data.otherUserName ?? '',
-            otherUserPhoto: data.otherUserPhoto ?? null,
-            listingTitle: data.listingTitle ?? '',
+            screen: 'Chat',
+            params: {
+              conversationId: data.conversationId,
+              otherUserId: data.otherUserId ?? '',
+              otherUserName: data.otherUserName ?? '',
+              otherUserPhoto: data.otherUserPhoto ?? null,
+              listingTitle: data.listingTitle ?? '',
+            },
           },
-        },
-      });
+        });
+      } else if (data.listingId) {
+        // Favori ve kayitli arama bildirimleri sadece listingId taniyor -
+        // bunlara dokununca ilgili ilana gitmesi lazim, oncesinde hicbir
+        // yere gitmiyordu.
+        navigationRef.navigate('Main', {
+          screen: 'HomeTab',
+          params: {
+            screen: 'ListingDetail',
+            params: { listingId: data.listingId },
+          },
+        });
+      }
     });
     return () => subscription.remove();
   }, []);
@@ -64,7 +80,9 @@ function ThemedApp() {
 
   return (
     <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-      <RootNavigator />
+      <AppAlertProvider>
+        <RootNavigator />
+      </AppAlertProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </NavigationContainer>
   );

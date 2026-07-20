@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,9 +14,12 @@ import {
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { showAlert } from '../components/AppAlert';
+import { BuyerPickerModal } from '../components/BuyerPickerModal';
 import { CommentsSection } from '../components/CommentsSection';
 import { FullscreenImageViewer } from '../components/FullscreenImageViewer';
 import { IconButton } from '../components/IconButton';
@@ -32,7 +34,7 @@ import {
   incrementListingView,
   markListingSold,
 } from '../services/firestore';
-import { getOrCreateConversation } from '../services/chat';
+import { fetchListingBuyers, getOrCreateConversation } from '../services/chat';
 import { submitReport } from '../services/reports';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -60,24 +62,37 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const [activeImage, setActiveImage] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [buyerPickerVisible, setBuyerPickerVisible] = useState(false);
+  const [listingBuyers, setListingBuyers] = useState<
+    { buyerId: string; buyerName: string; buyerPhotoURL: string | null }[]
+  >([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchListingById(listingId)
-      .then((result) => {
-        if (!cancelled) setListing(result);
-        if (result && result.sellerId !== user?.uid) {
-          incrementListingView(listingId);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listingId]);
+  const hasCountedView = useRef(false);
+
+  // useFocusEffect kullanilir ki duzenleme ekranindan geri donulunce
+  // (fiyat/foto degisikligi) burasi guncel veriyi yeniden ceksin. Goruntulenme
+  // sayaci sadece ilk kez odaklanildiginda bir kez artar, her geri donuste degil.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      fetchListingById(listingId)
+        .then((result) => {
+          if (cancelled) return;
+          setListing(result);
+          if (result && result.sellerId !== user?.uid && !hasCountedView.current) {
+            hasCountedView.current = true;
+            incrementListingView(listingId);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [listingId])
+  );
 
   if (loading) {
     return (
@@ -99,6 +114,11 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const imageHeight = width;
   const isOwnListing = user?.uid === listing.sellerId;
   const favorited = isFavorite(listing.id);
+  const priceDropFrom = (() => {
+    if (listing.priceHistory.length < 2) return null;
+    const previous = listing.priceHistory[listing.priceHistory.length - 2].price;
+    return previous > listing.price ? previous : null;
+  })();
 
   const handleMessage = async () => {
     if (!requireAuth() || !user) return;
@@ -124,26 +144,48 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
           listingTitle: listing.title,
         },
       });
-    } catch {
-      Alert.alert('Hata', 'Sohbet açılamadı. İnternet bağlantını kontrol edip tekrar dene.');
+    } catch (error: any) {
+      if (error?.code === 'permission-denied') {
+        showAlert('Mesaj gönderilemedi', 'Bu satıcıya mesaj gönderemiyorsun.');
+      } else {
+        showAlert('Hata', 'Sohbet açılamadı. İnternet bağlantını kontrol edip tekrar dene.');
+      }
     }
   };
 
-  const handleMarkSold = () => {
-    Alert.alert('Satıldı Olarak İşaretle', 'Bu ilanı satıldı olarak işaretlemek istediğine emin misin?', [
+  const confirmMarkSold = (buyerId: string | null) => {
+    showAlert('Satıldı Olarak İşaretle', 'Bu ilanı satıldı olarak işaretlemek istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       {
         text: 'İşaretle',
         onPress: async () => {
           try {
-            await markListingSold(listing.id, listing.sellerId);
-            setListing({ ...listing, status: 'sold' });
+            await markListingSold(listing.id, listing.sellerId, buyerId);
+            setListing({ ...listing, status: 'sold', soldTo: buyerId });
           } catch {
-            Alert.alert('Hata', 'İşaretlenemedi, tekrar dene.');
+            showAlert('Hata', 'İşaretlenemedi, tekrar dene.');
           }
         },
       },
     ]);
+  };
+
+  const handleMarkSold = async () => {
+    try {
+      const buyers = await fetchListingBuyers(listing.id);
+      if (buyers.length > 0) {
+        setListingBuyers(buyers);
+        setBuyerPickerVisible(true);
+      } else {
+        confirmMarkSold(null);
+      }
+    } catch {
+      confirmMarkSold(null);
+    }
+  };
+
+  const handleEdit = () => {
+    navigation.navigate('AddListing', { editListingId: listing.id });
   };
 
   const handleOpenReport = () => {
@@ -164,7 +206,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   };
 
   const handleDelete = () => {
-    Alert.alert('İlanı Kaldır', 'Bu ilanı kalıcı olarak silmek istediğine emin misin?', [
+    showAlert('İlanı Kaldır', 'Bu ilanı kalıcı olarak silmek istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       {
         text: 'Sil',
@@ -174,7 +216,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             await deleteListing(listing.id);
             navigation.goBack();
           } catch {
-            Alert.alert('Hata', 'İlan silinemedi, tekrar dene.');
+            showAlert('Hata', 'İlan silinemedi, tekrar dene.');
           }
         },
       },
@@ -243,13 +285,23 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <View style={styles.tag}>
               <Text style={styles.tagText}>{listing.category}</Text>
             </View>
+            {listing.subcategory && (
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>{listing.subcategory}</Text>
+              </View>
+            )}
             <View style={styles.tag}>
               <Text style={styles.tagText}>{listing.condition}</Text>
             </View>
           </View>
 
           <Text style={styles.title}>{listing.title}</Text>
-          <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+            {priceDropFrom !== null && (
+              <Text style={styles.oldPrice}>{formatPrice(priceDropFrom)}</Text>
+            )}
+          </View>
 
           <View style={styles.metaRow}>
             <Ionicons name="location-outline" size={15} color={colors.textMuted} />
@@ -259,12 +311,34 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
             <View style={styles.metaDot} />
             <Ionicons name="eye-outline" size={14} color={colors.textFaint} />
             <Text style={styles.metaText}>{listing.viewCount}</Text>
+            {listing.favoriteCount > 0 && (
+              <>
+                <View style={styles.metaDot} />
+                <Ionicons name="heart" size={13} color={colors.textFaint} />
+                <Text style={styles.metaText}>{listing.favoriteCount}</Text>
+              </>
+            )}
           </View>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionHeading}>Açıklama</Text>
           <Text style={styles.description}>{listing.description}</Text>
+
+          {Object.keys(listing.attributes).length > 0 && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sectionHeading}>Özellikler</Text>
+              <View style={styles.attributesGrid}>
+                {Object.entries(listing.attributes).map(([key, value]) => (
+                  <View key={key} style={styles.attributeItem}>
+                    <Text style={styles.attributeKey}>{key}</Text>
+                    <Text style={styles.attributeValue}>{value}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
 
           <View style={styles.divider} />
 
@@ -311,9 +385,14 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         </IconButton>
         <View style={styles.headerRightControls}>
           {isOwnListing ? (
-            <IconButton variant="translucent" onPress={handleDelete} accessibilityLabel="İlanı Kaldır">
-              <Ionicons name="trash-outline" size={19} color="#fff" />
-            </IconButton>
+            <>
+              <IconButton variant="translucent" onPress={handleEdit} accessibilityLabel="İlanı Düzenle">
+                <Ionicons name="pencil-outline" size={18} color="#fff" />
+              </IconButton>
+              <IconButton variant="translucent" onPress={handleDelete} accessibilityLabel="İlanı Kaldır">
+                <Ionicons name="trash-outline" size={19} color="#fff" />
+              </IconButton>
+            </>
           ) : (
             <IconButton
               variant="translucent"
@@ -369,8 +448,16 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
       <ReportModal
         visible={reportModalVisible}
         title="İlanı Şikayet Et"
+        reportType="listing"
         onClose={() => setReportModalVisible(false)}
         onSubmit={handleSubmitReport}
+      />
+
+      <BuyerPickerModal
+        visible={buyerPickerVisible}
+        buyers={listingBuyers}
+        onClose={() => setBuyerPickerVisible(false)}
+        onSelect={confirmMarkSold}
       />
     </KeyboardAvoidingView>
   );
@@ -432,10 +519,20 @@ function createStyles(colors: ColorPalette) {
       color: colors.text,
       marginBottom: spacing.xs,
     },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
     price: {
       ...typography.largeTitle,
       color: colors.primary,
-      marginBottom: spacing.md,
+    },
+    oldPrice: {
+      ...typography.subhead,
+      color: colors.textFaint,
+      textDecorationLine: 'line-through',
     },
     metaRow: {
       flexDirection: 'row',
@@ -467,6 +564,24 @@ function createStyles(colors: ColorPalette) {
       ...typography.body,
       color: colors.textMuted,
       lineHeight: 22,
+    },
+    attributesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.md,
+    },
+    attributeItem: {
+      minWidth: '42%',
+      gap: 2,
+    },
+    attributeKey: {
+      ...typography.caption,
+      color: colors.textFaint,
+    },
+    attributeValue: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.text,
     },
     sellerRow: {
       flexDirection: 'row',

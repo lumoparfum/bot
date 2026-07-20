@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   Share,
@@ -16,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { showAlert } from '../components/AppAlert';
 import { GuestPrompt } from '../components/GuestPrompt';
 import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
@@ -93,7 +93,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleDeleteSelectedFavorites = () => {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
-    Alert.alert('Favorilerden Kaldır', `${ids.length} ilan favorilerinden kaldırılacak. Emin misin?`, [
+    showAlert('Favorilerden Kaldır', `${ids.length} ilan favorilerinden kaldırılacak. Emin misin?`, [
       { text: 'Vazgeç', style: 'cancel' },
       {
         text: 'Kaldır',

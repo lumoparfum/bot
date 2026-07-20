@@ -29,10 +29,10 @@ function mapReview(id: string, data: DocumentData): Review {
   };
 }
 
-// Sadece birbiriyle en az bir kere mesajlasmis (konusmus) kullanicilar
-// birbirini degerlendirebilir - fake/rastgele yorum onlemi.
-export async function hasContactWith(viewerId: string, otherUserId: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, 'users', viewerId, 'contacts', otherUserId));
+// Sadece bu saticidan onayli bir alisveris yapmis (satici "satildi" derken
+// secmis) kullanicilar degerlendirme birakabilir - fake/rastgele yorum onlemi.
+export async function hasPurchasedFrom(buyerId: string, sellerId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'users', sellerId, 'buyers', buyerId));
   return snap.exists();
 }
 
@@ -43,6 +43,12 @@ export async function fetchUserRatingSummary(uid: string): Promise<UserRatingSum
     ratingSum: data?.ratingSum ?? 0,
     ratingCount: data?.ratingCount ?? 0,
     salesCount: data?.salesCount ?? 0,
+    contactedCount: data?.contactedCount ?? 0,
+    responseCount: data?.responseCount ?? 0,
+    responseTimeTotalMinutes: data?.responseTimeTotalMinutes ?? 0,
+    accountType: data?.accountType === 'business' ? 'business' : 'individual',
+    createdAt: data?.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
+    lastActiveAt: data?.lastActiveAt instanceof Timestamp ? data.lastActiveAt.toMillis() : null,
   };
 }
 

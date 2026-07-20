@@ -26,6 +26,11 @@ export async function updateDisplayName(name: string) {
   await updateProfile(auth.currentUser, { displayName: name });
 }
 
+export async function updateProfilePhoto(photoURL: string) {
+  if (!auth.currentUser) return;
+  await updateProfile(auth.currentUser, { photoURL });
+}
+
 export async function signOutUser() {
   try {
     await GoogleSignin.signOut();

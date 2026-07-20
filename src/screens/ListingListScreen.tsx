@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -16,7 +15,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BrandMark } from '../components/BrandMark';
+import { showAlert } from '../components/AppAlert';
+import { Wordmark } from '../components/Wordmark';
 import { CategoryChip } from '../components/CategoryChip';
 import { IconButton } from '../components/IconButton';
 import { ListingCard } from '../components/ListingCard';
@@ -24,13 +24,15 @@ import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { categories, categoryIcons } from '../types/listing';
+import { categories, categoryIcons, conditions, subcategories } from '../types/listing';
 import type { Listing, ListingLocation } from '../types/listing';
 import { fetchListings } from '../services/firestore';
+import { fetchBlockedUserIds } from '../services/blocks';
 import { createSavedSearch } from '../services/savedSearches';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import { formatNumberInput } from '../utils/format';
 import {
   DISTANCE_FILTERS,
   distanceKm,
@@ -67,9 +69,17 @@ export default function ListingListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
   const [selectedCategory, setSelectedCategory] = useState(ALL);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+
+  const handleSelectCategory = (item: string) => {
+    setSelectedCategory(item);
+    setSelectedSubcategory(null);
+  };
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationLabel, setLocationLabel] = useState<string | null>(null);
@@ -82,7 +92,11 @@ export default function ListingListScreen({ navigation }: Props) {
   const [maxPrice, setMaxPrice] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const hasActiveFilters =
-    sortOption !== 'newest' || minPrice !== '' || maxPrice !== '' || locationFilterActive;
+    sortOption !== 'newest' ||
+    minPrice !== '' ||
+    maxPrice !== '' ||
+    locationFilterActive ||
+    selectedCondition !== null;
 
   const loadListings = useCallback(async () => {
     try {
@@ -100,7 +114,13 @@ export default function ListingListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       loadListings();
-    }, [loadListings])
+      if (user) {
+        fetchBlockedUserIds(user.uid).then((ids) => setBlockedIds(new Set(ids)));
+      } else {
+        setBlockedIds(new Set());
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadListings, user])
   );
 
   useEffect(() => {
@@ -149,7 +169,7 @@ export default function ListingListScreen({ navigation }: Props) {
   const handleSaveSearch = () => {
     if (!requireAuth() || !user) return;
     if (!query.trim() && selectedCategory === ALL && !minPrice && !maxPrice) {
-      Alert.alert('Arama Boş', 'Kaydetmeden önce bir arama yazın ya da filtre seçin.');
+      showAlert('Arama Boş', 'Kaydetmeden önce bir arama yazın ya da filtre seçin.');
       return;
     }
     createSavedSearch({
@@ -159,8 +179,8 @@ export default function ListingListScreen({ navigation }: Props) {
       minPrice: minPrice ? Number(minPrice) : null,
       maxPrice: maxPrice ? Number(maxPrice) : null,
     })
-      .then(() => Alert.alert('Kaydedildi', 'Bu kritere uyan yeni ilan geldiğinde bildirim alacaksın.'))
-      .catch(() => Alert.alert('Hata', 'Arama kaydedilemedi, tekrar dene.'));
+      .then(() => showAlert('Kaydedildi', 'Bu kritere uyan yeni ilan geldiğinde bildirim alacaksın.'))
+      .catch(() => showAlert('Hata', 'Arama kaydedilemedi, tekrar dene.'));
   };
 
   const handleClearFilters = () => {
@@ -169,6 +189,7 @@ export default function ListingListScreen({ navigation }: Props) {
     setMaxPrice('');
     setSelectedRadius(null);
     setLocationFilterActive(false);
+    setSelectedCondition(null);
   };
 
   const rows = useMemo(() => {
@@ -186,9 +207,22 @@ export default function ListingListScreen({ navigation }: Props) {
             : null;
         return { listing, distance };
       })
+      .filter(({ listing }) => !blockedIds.has(listing.sellerId))
       .filter(({ listing, distance }) => {
         const matchesCategory = selectedCategory === ALL || listing.category === selectedCategory;
-        const matchesQuery = listing.title.toLowerCase().includes(query.trim().toLowerCase());
+        const matchesSubcategory =
+          !selectedSubcategory || listing.subcategory === selectedSubcategory;
+        const matchesCondition = !selectedCondition || listing.condition === selectedCondition;
+        // Baslikla sinirli kalmasin - aciklama ve marka/model/beden gibi
+        // yapilandirilmis ozelliklerde de arasin.
+        const q = query.trim().toLocaleLowerCase('tr-TR');
+        const matchesQuery =
+          !q ||
+          listing.title.toLocaleLowerCase('tr-TR').includes(q) ||
+          listing.description.toLocaleLowerCase('tr-TR').includes(q) ||
+          Object.values(listing.attributes).some((value) =>
+            value.toLocaleLowerCase('tr-TR').includes(q)
+          );
         const matchesMin = min === null || listing.price >= min;
         const matchesMax = max === null || listing.price <= max;
 
@@ -206,7 +240,15 @@ export default function ListingListScreen({ navigation }: Props) {
           }
         }
 
-        return matchesCategory && matchesQuery && matchesLocation && matchesMin && matchesMax;
+        return (
+          matchesCategory &&
+          matchesSubcategory &&
+          matchesCondition &&
+          matchesQuery &&
+          matchesLocation &&
+          matchesMin &&
+          matchesMax
+        );
       })
       .sort((a, b) => {
         switch (sortOption) {
@@ -226,7 +268,10 @@ export default function ListingListScreen({ navigation }: Props) {
       });
   }, [
     listings,
+    blockedIds,
     selectedCategory,
+    selectedSubcategory,
+    selectedCondition,
     query,
     selectedRadius,
     userLocation,
@@ -251,8 +296,7 @@ export default function ListingListScreen({ navigation }: Props) {
           <View>
             <View style={styles.topBar}>
               <View style={styles.brandRow}>
-                <BrandMark size={32} />
-                <Text style={styles.brandText}>Stop82</Text>
+                <Wordmark size={24} />
               </View>
               <View style={styles.topBarActions}>
                 <IconButton onPress={() => setFilterModalVisible(true)} accessibilityLabel="Filtrele">
@@ -271,7 +315,7 @@ export default function ListingListScreen({ navigation }: Props) {
               </View>
             </View>
 
-            <Text style={styles.title}>İkinci el, ilk elden fırsat</Text>
+            <Text style={styles.title}>Ücretsiz. Güvenli. Yakınında.</Text>
 
             <View style={styles.searchBar}>
               <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -304,10 +348,32 @@ export default function ListingListScreen({ navigation }: Props) {
                   label={item}
                   icon={categoryIcons[item]}
                   selected={item === selectedCategory}
-                  onPress={() => setSelectedCategory(item)}
+                  onPress={() => handleSelectCategory(item)}
                 />
               ))}
             </ScrollView>
+
+            {selectedCategory !== ALL && subcategories[selectedCategory] && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.subChipRow}
+              >
+                <CategoryChip
+                  label={ALL}
+                  selected={selectedSubcategory === null}
+                  onPress={() => setSelectedSubcategory(null)}
+                />
+                {subcategories[selectedCategory].map((sub) => (
+                  <CategoryChip
+                    key={sub}
+                    label={sub}
+                    selected={sub === selectedSubcategory}
+                    onPress={() => setSelectedSubcategory(sub)}
+                  />
+                ))}
+              </ScrollView>
+            )}
           </View>
         }
         renderItem={({ item }) => (
@@ -440,7 +506,7 @@ export default function ListingListScreen({ navigation }: Props) {
                   placeholder="Min ₺"
                   placeholderTextColor={colors.textFaint}
                   keyboardType="number-pad"
-                  value={minPrice}
+                  value={formatNumberInput(minPrice)}
                   onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
                 />
                 <Text style={styles.priceRangeDash}>—</Text>
@@ -449,9 +515,26 @@ export default function ListingListScreen({ navigation }: Props) {
                   placeholder="Max ₺"
                   placeholderTextColor={colors.textFaint}
                   keyboardType="number-pad"
-                  value={maxPrice}
+                  value={formatNumberInput(maxPrice)}
                   onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
                 />
+              </View>
+
+              <Text style={styles.filterSectionLabel}>Durum</Text>
+              <View style={styles.sortOptions}>
+                <CategoryChip
+                  label={ALL}
+                  selected={selectedCondition === null}
+                  onPress={() => setSelectedCondition(null)}
+                />
+                {conditions.map((item) => (
+                  <CategoryChip
+                    key={item}
+                    label={item}
+                    selected={selectedCondition === item}
+                    onPress={() => setSelectedCondition(item)}
+                  />
+                ))}
               </View>
             </ScrollView>
 
@@ -495,10 +578,6 @@ function createStyles(colors: ColorPalette) {
       alignItems: 'center',
       gap: spacing.sm,
     },
-    brandText: {
-      ...typography.title3,
-      color: colors.text,
-    },
     topBarActions: {
       flexDirection: 'row',
       gap: spacing.sm,
@@ -513,8 +592,9 @@ function createStyles(colors: ColorPalette) {
       backgroundColor: colors.primary,
     },
     title: {
-      ...typography.title2,
-      color: colors.text,
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.textMuted,
       marginBottom: spacing.md,
     },
     searchBar: {
@@ -534,6 +614,10 @@ function createStyles(colors: ColorPalette) {
       padding: 0,
     },
     chipRow: {
+      gap: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    subChipRow: {
       gap: spacing.sm,
       paddingBottom: spacing.sm,
     },

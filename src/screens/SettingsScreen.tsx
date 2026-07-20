@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,22 +9,30 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { showAlert } from '../components/AppAlert';
+import { BusinessRequestModal } from '../components/BusinessRequestModal';
 import { IconButton } from '../components/IconButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { deleteAccount } from '../services/account';
-import { updateDisplayName } from '../services/authService';
-import { ensureUserProfile } from '../services/firestore';
+import { updateDisplayName, updateProfilePhoto } from '../services/authService';
+import { fetchLatestBusinessRequest, submitBusinessRequest } from '../services/business';
+import { ensureUserProfile, fetchAccountType, setAccountType } from '../services/firestore';
+import { uploadAvatarImage } from '../services/storage';
 import {
   getNotificationPermissionStatus,
   openSystemNotificationSettings,
   registerForPushNotificationsAsync,
   savePushToken,
 } from '../services/notifications';
+import type { BusinessRequest } from '../types/business';
+import type { AccountType } from '../types/review';
 import type { ProfileStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Settings'>;
@@ -47,6 +54,11 @@ export default function SettingsScreen({ navigation }: Props) {
   const [notifGranted, setNotifGranted] = useState<boolean | null>(null);
   const [notifCanAskAgain, setNotifCanAskAgain] = useState(true);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [changingPhoto, setChangingPhoto] = useState(false);
+  const [accountType, setAccountTypeValue] = useState<AccountType>('individual');
+  const [savingAccountType, setSavingAccountType] = useState(false);
+  const [businessRequest, setBusinessRequest] = useState<BusinessRequest | null>(null);
+  const [businessModalVisible, setBusinessModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,8 +66,78 @@ export default function SettingsScreen({ navigation }: Props) {
         setNotifGranted(granted);
         setNotifCanAskAgain(canAskAgain);
       });
-    }, [])
+      if (user) {
+        fetchAccountType(user.uid).then(setAccountTypeValue);
+        fetchLatestBusinessRequest(user.uid).then(setBusinessRequest);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
   );
+
+  const handleChangePhoto = async () => {
+    if (!user || changingPhoto) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('İzin gerekli', 'Fotoğraf seçebilmek için galeri erişimine izin ver.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setChangingPhoto(true);
+    try {
+      const url = await uploadAvatarImage(user.uid, result.assets[0].uri);
+      await updateProfilePhoto(url);
+      await ensureUserProfile(user.uid, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: url,
+      });
+      await refreshUser();
+    } catch {
+      showAlert('Hata', 'Fotoğraf güncellenemedi, tekrar dene.');
+    } finally {
+      setChangingPhoto(false);
+    }
+  };
+
+  // Isletme hesabini kaldirmak icin onaya gerek yok - sadece kazanmak icin
+  // Stop82 ekibinin incelemesi gerekiyor (asagida handleSubmitBusinessRequest).
+  const handleRemoveBusinessAccount = () => {
+    if (!user || savingAccountType) return;
+    showAlert('İşletme Hesabını Kaldır', 'İşletme rozeti profilinden kaldırılacak. Emin misin?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Kaldır',
+        style: 'destructive',
+        onPress: async () => {
+          setSavingAccountType(true);
+          try {
+            await setAccountType(user.uid, 'individual');
+            setAccountTypeValue('individual');
+          } catch {
+            showAlert('Hata', 'Güncellenemedi, tekrar dene.');
+          } finally {
+            setSavingAccountType(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSubmitBusinessRequest = async (companyName: string, description: string) => {
+    if (!user) return;
+    await submitBusinessRequest(user.uid, companyName, description);
+    // Basvuru basariyla gonderildi - durumu tazeleme sadece bir gorunum
+    // detayi, bu basarisiz olursa "basvuru gonderilemedi" gibi yanlis bir
+    // hata gostermemesi icin ayri tutuluyor (bir sonraki odaklanmada zaten yenilenir).
+    fetchLatestBusinessRequest(user.uid).then(setBusinessRequest).catch(() => {});
+  };
 
   const handleEnableNotifications = async () => {
     if (!notifCanAskAgain) {
@@ -70,7 +152,7 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Çıkış Yap', 'Hesabından çıkış yapmak istediğine emin misin?', [
+    showAlert('Çıkış Yap', 'Hesabından çıkış yapmak istediğine emin misin?', [
       { text: 'Vazgeç', style: 'cancel' },
       { text: 'Çıkış Yap', style: 'destructive', onPress: signOut },
     ]);
@@ -90,7 +172,7 @@ export default function SettingsScreen({ navigation }: Props) {
       });
       setEditingName(false);
     } catch {
-      Alert.alert('Hata', 'İsim güncellenemedi, tekrar dene.');
+      showAlert('Hata', 'İsim güncellenemedi, tekrar dene.');
     } finally {
       setSavingName(false);
     }
@@ -102,7 +184,7 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
       'Hesabını Sil',
       'Bu işlem geri alınamaz. İlanların, favorilerin, mesajların ve tüm hesap bilgilerin kalıcı olarak silinecek. Emin misin?',
       [
@@ -116,7 +198,7 @@ export default function SettingsScreen({ navigation }: Props) {
               await deleteAccount();
               await signOut();
             } catch {
-              Alert.alert('Hata', 'Hesap silinemedi. İnternet bağlantını kontrol edip tekrar dene.');
+              showAlert('Hata', 'Hesap silinemedi. İnternet bağlantını kontrol edip tekrar dene.');
             } finally {
               setDeletingAccount(false);
             }
@@ -176,6 +258,29 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.sectionLabel}>Hesap</Text>
+
+        <View style={styles.avatarSection}>
+          <Pressable onPress={handleChangePhoto} disabled={changingPhoto} style={styles.avatarPressable}>
+            {user?.photoURL ? (
+              <Image source={{ uri: user.photoURL }} style={styles.avatarLarge} />
+            ) : (
+              <View style={styles.avatarLargeFallback}>
+                <Text style={styles.avatarLargeText}>
+                  {(user?.displayName ?? user?.email ?? '?').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              {changingPhoto ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#fff" />
+              )}
+            </View>
+          </Pressable>
+          <Text style={styles.avatarHint}>Fotoğrafı değiştirmek için dokun</Text>
+        </View>
+
         <View style={styles.card}>
           {editingName ? (
             <View style={[styles.row, styles.rowDivider]}>
@@ -207,13 +312,45 @@ export default function SettingsScreen({ navigation }: Props) {
               <Ionicons name="pencil-outline" size={16} color={colors.textFaint} />
             </Pressable>
           )}
-          <View style={styles.row}>
+          <View style={[styles.row, styles.rowDivider]}>
             <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
             <Text style={styles.rowLabel} numberOfLines={1}>
               {user?.email ?? '—'}
             </Text>
           </View>
+          {accountType === 'business' ? (
+            <View style={styles.row}>
+              <Ionicons name="briefcase" size={20} color={colors.primary} />
+              <Text style={styles.rowLabel}>İşletme Hesabı Aktif</Text>
+              <Pressable onPress={handleRemoveBusinessAccount} disabled={savingAccountType} hitSlop={8}>
+                <Text style={styles.removeLink}>Kaldır</Text>
+              </Pressable>
+            </View>
+          ) : businessRequest?.status === 'pending' ? (
+            <View style={styles.row}>
+              <Ionicons name="time-outline" size={20} color={colors.textMuted} />
+              <Text style={styles.rowLabel}>İşletme başvurun inceleniyor</Text>
+            </View>
+          ) : (
+            <View style={styles.row}>
+              <Ionicons name="briefcase-outline" size={20} color={colors.textMuted} />
+              <Text style={styles.rowLabel}>
+                {businessRequest?.status === 'rejected'
+                  ? 'İşletme başvurun reddedildi'
+                  : 'İşletme Hesabı'}
+              </Text>
+              <Pressable onPress={() => setBusinessModalVisible(true)} hitSlop={8}>
+                <Text style={styles.enableLink}>
+                  {businessRequest?.status === 'rejected' ? 'Tekrar Başvur' : 'Başvur'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
+        <Text style={styles.hintText}>
+          İşletme hesabı, Stop82 ekibinin incelediği bir başvuru sonucunda aktif olur. Onaylanırsa
+          profil fotoğrafın yerine firma logonu koyabilir, profilinde "İşletme" rozeti gösterebilirsin.
+        </Text>
 
         <Text style={styles.sectionLabel}>Hakkında</Text>
         <View style={styles.card}>
@@ -222,6 +359,11 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.rowLabel}>Sürüm</Text>
             <Text style={styles.rowValue}>1.0.0</Text>
           </View>
+          <Pressable style={[styles.row, styles.rowDivider]} onPress={() => navigation.navigate('Help')}>
+            <Ionicons name="help-buoy-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.rowLabel}>Yardım ve Destek</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+          </Pressable>
           <Pressable style={styles.row} onPress={() => navigation.navigate('Terms')}>
             <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
             <Text style={styles.rowLabel}>Kullanım Şartları ve Gizlilik</Text>
@@ -246,6 +388,12 @@ export default function SettingsScreen({ navigation }: Props) {
           )}
         </Pressable>
       </ScrollView>
+
+      <BusinessRequestModal
+        visible={businessModalVisible}
+        onClose={() => setBusinessModalVisible(false)}
+        onSubmit={handleSubmitBusinessRequest}
+      />
     </SafeAreaView>
   );
 }
@@ -283,6 +431,58 @@ function createStyles(colors: ColorPalette) {
       borderRadius: radius.md,
       overflow: 'hidden',
     },
+    avatarSection: {
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginBottom: spacing.md,
+    },
+    avatarPressable: {
+      width: 84,
+      height: 84,
+    },
+    avatarLarge: {
+      width: 84,
+      height: 84,
+      borderRadius: 42,
+      backgroundColor: colors.surface,
+    },
+    avatarLargeFallback: {
+      width: 84,
+      height: 84,
+      borderRadius: 42,
+      backgroundColor: colors.navy,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarLargeText: {
+      color: colors.primary,
+      fontWeight: '700',
+      fontSize: 30,
+    },
+    avatarEditBadge: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+    avatarHint: {
+      ...typography.caption,
+      color: colors.textFaint,
+    },
+    hintText: {
+      ...typography.caption,
+      color: colors.textFaint,
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.xs,
+      lineHeight: 16,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -313,6 +513,11 @@ function createStyles(colors: ColorPalette) {
       ...typography.subhead,
       fontWeight: '600',
       color: colors.primary,
+    },
+    removeLink: {
+      ...typography.subhead,
+      fontWeight: '600',
+      color: colors.error,
     },
     signOutRow: {
       flexDirection: 'row',

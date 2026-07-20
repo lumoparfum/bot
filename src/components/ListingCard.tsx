@@ -21,6 +21,11 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const requireAuth = useRequireAuth();
   const favorited = isFavorite(listing.id);
+  const priceDropFrom = (() => {
+    if (listing.priceHistory.length < 2) return null;
+    const previous = listing.priceHistory[listing.priceHistory.length - 2].price;
+    return previous > listing.price ? previous : null;
+  })();
 
   return (
     <Pressable
@@ -28,12 +33,18 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
     >
       <View style={styles.imageWrap}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.image}
-          contentFit="cover"
-          transition={150}
-        />
+        {listing.images.length > 0 ? (
+          <Image
+            source={{ uri: listing.images[0] }}
+            style={styles.image}
+            contentFit="cover"
+            transition={150}
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="image-outline" size={24} color={colors.textFaint} />
+          </View>
+        )}
         <Pressable
           hitSlop={8}
           onPress={() => {
@@ -47,10 +58,16 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
             color={favorited ? colors.primary : '#fff'}
           />
         </Pressable>
-        {listing.status === 'sold' && (
+        {listing.status === 'sold' ? (
           <View style={styles.soldBadge}>
             <Text style={styles.soldBadgeText}>SATILDI</Text>
           </View>
+        ) : (
+          priceDropFrom !== null && (
+            <View style={styles.priceDropBadge}>
+              <Text style={styles.priceDropBadgeText}>FİYAT DÜŞTÜ</Text>
+            </View>
+          )
         )}
       </View>
 
@@ -58,7 +75,12 @@ export function ListingCard({ listing, onPress, distanceLabel }: Props) {
         <Text style={styles.title} numberOfLines={1}>
           {listing.title}
         </Text>
-        <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>{formatPrice(listing.price)}</Text>
+          {priceDropFrom !== null && (
+            <Text style={styles.oldPrice}>{formatPrice(priceDropFrom)}</Text>
+          )}
+        </View>
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={12} color={colors.textMuted} />
           <Text style={styles.metaText} numberOfLines={1}>
@@ -92,6 +114,12 @@ function createStyles(colors: ColorPalette) {
       width: '100%',
       height: '100%',
     },
+    imagePlaceholder: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     favoriteButton: {
       position: 'absolute',
       top: spacing.sm,
@@ -118,6 +146,21 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '700',
       letterSpacing: 0.4,
     },
+    priceDropBadge: {
+      position: 'absolute',
+      top: spacing.sm,
+      left: spacing.sm,
+      backgroundColor: colors.success,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.sm,
+    },
+    priceDropBadgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+    },
     body: {
       padding: spacing.sm,
       gap: 2,
@@ -127,10 +170,20 @@ function createStyles(colors: ColorPalette) {
       fontWeight: '600',
       color: colors.text,
     },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 6,
+      marginBottom: 2,
+    },
     price: {
       ...typography.headline,
       color: colors.primary,
-      marginBottom: 2,
+    },
+    oldPrice: {
+      ...typography.caption,
+      color: colors.textFaint,
+      textDecorationLine: 'line-through',
     },
     metaRow: {
       flexDirection: 'row',

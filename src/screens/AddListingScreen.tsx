@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,16 +15,26 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { showAlert } from '../components/AppAlert';
 import { CategoryChip } from '../components/CategoryChip';
+import { CategoryPickerModal } from '../components/CategoryPickerModal';
 import { GuestPrompt } from '../components/GuestPrompt';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { categories, categoryIcons, conditions, type ListingCondition, type ListingLocation } from '../types/listing';
-import { createListing } from '../services/firestore';
+import { conditions, type ListingCondition, type ListingLocation } from '../types/listing';
+import {
+  DAILY_LISTING_LIMIT,
+  checkListingCreationAllowed,
+  createListing,
+  fetchListingById,
+  updateListing,
+} from '../services/firestore';
+import { deleteImageByUrl } from '../services/storage';
 import { useAuth } from '../context/AuthContext';
+import { formatNumberInput } from '../utils/format';
 import type { MainTabParamList } from '../types/navigation';
 
 const MAX_PHOTOS = 4;
@@ -32,19 +42,74 @@ const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: 
 
 type Props = BottomTabScreenProps<MainTabParamList, 'AddListing'>;
 
-export default function AddListingScreen({ navigation }: Props) {
+export default function AddListingScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
+  const editListingId = route.params?.editListingId ?? null;
+
+  const [loadingExisting, setLoadingExisting] = useState(!!editListingId);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [removedImages, setRemovedImages] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const [subcategory, setSubcategory] = useState<string | null>(null);
+  const [attributeValues, setAttributeValues] = useState<Record<string, string>>({});
   const [condition, setCondition] = useState<ListingCondition | null>(null);
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState<ListingLocation>(EMPTY_LOCATION);
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [originalPrice, setOriginalPrice] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!editListingId || !user) return;
+    let cancelled = false;
+    setLoadingExisting(true);
+    fetchListingById(editListingId)
+      .then((listing) => {
+        if (cancelled) return;
+        if (!listing || listing.sellerId !== user.uid) {
+          showAlert('Bulunamadı', 'Bu ilan düzenlenemiyor.');
+          navigation.goBack();
+          return;
+        }
+        setTitle(listing.title);
+        setCategory(listing.category);
+        setSubcategory(listing.subcategory);
+        setAttributeValues(listing.attributes);
+        setCondition(listing.condition);
+        setPrice(String(listing.price));
+        setOriginalPrice(listing.price);
+        setDescription(listing.description);
+        setLocation(listing.location);
+        setExistingImages(listing.images);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExisting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editListingId, user]);
+
+  // Duzenleme ekranindan kaydetmeden baska bir sekmeye gecilirse, formda
+  // kalan eski ilan verisi sonraki "yeni ilan" girisine sizmasin diye
+  // sekmeden ayrilinca sifirlanir.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      if (editListingId) {
+        navigation.setParams({ editListingId: undefined });
+        resetForm();
+      }
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, editListingId]);
 
   if (!user) {
     return (
@@ -58,21 +123,34 @@ export default function AddListingScreen({ navigation }: Props) {
     );
   }
 
+  const totalPhotoCount = existingImages.length + photos.length;
   const isValid =
+    totalPhotoCount > 0 &&
     title.trim().length >= 3 &&
     category !== null &&
+    subcategory !== null &&
     condition !== null &&
     Number(price) > 0 &&
     description.trim().length >= 10;
 
+  const handleSelectCategory = (
+    nextCategory: string,
+    nextSubcategory: string,
+    nextAttributes: Record<string, string>
+  ) => {
+    setCategory(nextCategory);
+    setSubcategory(nextSubcategory);
+    setAttributeValues(nextAttributes);
+  };
+
   const handlePickPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('İzin gerekli', 'Fotoğraf ekleyebilmek için galeri erişimine izin ver.');
+      showAlert('İzin gerekli', 'Fotoğraf ekleyebilmek için galeri erişimine izin ver.');
       return;
     }
 
-    const remaining = MAX_PHOTOS - photos.length;
+    const remaining = MAX_PHOTOS - totalPhotoCount;
     if (remaining <= 0) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -91,54 +169,121 @@ export default function AddListingScreen({ navigation }: Props) {
     setPhotos((prev) => prev.filter((p) => p !== uri));
   };
 
+  const removeExistingImage = (url: string) => {
+    setExistingImages((prev) => prev.filter((u) => u !== url));
+    setRemovedImages((prev) => [...prev, url]);
+  };
+
   const resetForm = () => {
     setPhotos([]);
+    setExistingImages([]);
+    setRemovedImages([]);
     setTitle('');
     setCategory(null);
+    setSubcategory(null);
+    setAttributeValues({});
     setCondition(null);
     setPrice('');
+    setOriginalPrice(null);
     setDescription('');
     setLocation(EMPTY_LOCATION);
   };
 
   const handlePublish = async () => {
-    if (!isValid || !category || !condition) {
-      Alert.alert('Eksik bilgi', 'Lütfen başlık, kategori, durum, fiyat ve açıklamayı doldur.');
+    if (!isValid || !category || !subcategory || !condition) {
+      showAlert(
+        'Eksik bilgi',
+        'Lütfen en az bir fotoğraf ekle; başlık, kategori, durum, fiyat ve açıklamayı doldur.'
+      );
       return;
     }
     if (!user) {
-      Alert.alert('Giriş gerekli', 'İlan vermek için giriş yapmış olman gerekiyor.');
+      showAlert('Giriş gerekli', 'İlan vermek için giriş yapmış olman gerekiyor.');
       return;
     }
     setSubmitting(true);
     try {
-      await createListing({
-        title: title.trim(),
-        description: description.trim(),
-        price: Number(price),
-        category,
-        condition,
-        localImageUris: photos,
-        location,
-        sellerId: user.uid,
-        sellerName: user.displayName ?? 'Stop82 Kullanıcısı',
-        sellerPhotoURL: user.photoURL,
-      });
-      setSubmitting(false);
-      Alert.alert('İlanın yayında', `"${title}" ilanı yayınlandı.`, [
-        {
-          text: 'Tamam',
-          onPress: () => {
-            resetForm();
-            navigation.navigate('HomeTab', { screen: 'ListingList' });
+      if (!editListingId) {
+        const check = await checkListingCreationAllowed(user.uid, title.trim(), Number(price));
+        if (!check.allowed) {
+          setSubmitting(false);
+          if (check.reason === 'daily_limit') {
+            showAlert(
+              'Günlük ilan sınırına ulaştın',
+              `Spam ve botları önlemek için günde en fazla ${DAILY_LISTING_LIMIT} ilan verilebiliyor. Yarın tekrar dene.`
+            );
+          } else {
+            showAlert(
+              'Bu ilanı zaten vermişsin',
+              'Aynı başlık ve fiyatla kısa süre önce bir ilan yayınladın. Farklı bir ilansa başlığı biraz değiştirebilirsin.'
+            );
+          }
+          return;
+        }
+      }
+      if (editListingId) {
+        await updateListing(
+          editListingId,
+          {
+            title: title.trim(),
+            description: description.trim(),
+            price: Number(price),
+            category,
+            subcategory,
+            attributes: attributeValues,
+            condition,
+            location,
+            existingImages,
+            newLocalImageUris: photos,
           },
-        },
-      ]);
+          originalPrice ?? Number(price)
+        );
+        removedImages.forEach((url) => {
+          deleteImageByUrl(url).catch(() => {});
+        });
+        setSubmitting(false);
+        showAlert('Güncellendi', 'İlanındaki değişiklikler kaydedildi.', [
+          { text: 'Tamam', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await createListing({
+          title: title.trim(),
+          description: description.trim(),
+          price: Number(price),
+          category,
+          subcategory,
+          attributes: attributeValues,
+          condition,
+          localImageUris: photos,
+          location,
+          sellerId: user.uid,
+          sellerName: user.displayName ?? 'Stop82 Kullanıcısı',
+          sellerPhotoURL: user.photoURL,
+        });
+        setSubmitting(false);
+        showAlert('İlanın yayında', `"${title}" ilanı yayınlandı.`, [
+          {
+            text: 'Tamam',
+            onPress: () => {
+              resetForm();
+              navigation.navigate('HomeTab', { screen: 'ListingList' });
+            },
+          },
+        ]);
+      }
     } catch {
       setSubmitting(false);
-      Alert.alert('Bir şeyler ters gitti', 'İlan yayınlanamadı. Lütfen tekrar dene.');
+      showAlert('Bir şeyler ters gitti', 'Kaydedilemedi. Lütfen tekrar dene.');
     }
   };
+
+  if (loadingExisting) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ActivityIndicator color={colors.primary} style={styles.loading} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -151,11 +296,21 @@ export default function AddListingScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.heading}>İlan Ver</Text>
-          <Text style={styles.subheading}>Eşyanı hızlıca satışa çıkar.</Text>
+          <Text style={styles.heading}>{editListingId ? 'İlanı Düzenle' : 'İlan Ver'}</Text>
+          <Text style={styles.subheading}>
+            {editListingId ? 'Fiyat, açıklama ya da fotoğrafları güncelle.' : 'Eşyanı hızlıca satışa çıkar.'}
+          </Text>
 
           <Text style={styles.label}>Fotoğraflar</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
+            {existingImages.map((uri) => (
+              <View key={uri} style={styles.photoTile}>
+                <Image source={{ uri }} style={styles.photoImage} contentFit="cover" />
+                <Pressable style={styles.removePhotoButton} onPress={() => removeExistingImage(uri)}>
+                  <Ionicons name="close" size={12} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
             {photos.map((uri) => (
               <View key={uri} style={styles.photoTile}>
                 <Image source={{ uri }} style={styles.photoImage} contentFit="cover" />
@@ -164,7 +319,7 @@ export default function AddListingScreen({ navigation }: Props) {
                 </Pressable>
               </View>
             ))}
-            {photos.length < MAX_PHOTOS && (
+            {totalPhotoCount < MAX_PHOTOS && (
               <Pressable style={styles.addPhotoTile} onPress={handlePickPhotos}>
                 <Ionicons name="camera-outline" size={22} color={colors.textMuted} />
                 <Text style={styles.addPhotoText}>Ekle</Text>
@@ -182,17 +337,18 @@ export default function AddListingScreen({ navigation }: Props) {
           />
 
           <Text style={styles.label}>Kategori</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {categories.map((item) => (
-              <CategoryChip
-                key={item}
-                label={item}
-                icon={categoryIcons[item]}
-                selected={item === category}
-                onPress={() => setCategory(item)}
-              />
-            ))}
-          </ScrollView>
+          <Pressable style={styles.locationRow} onPress={() => setCategoryPickerVisible(true)}>
+            <Ionicons name="pricetag-outline" size={18} color={colors.textMuted} />
+            <Text
+              style={[styles.locationValue, !category && styles.locationPlaceholder]}
+              numberOfLines={2}
+            >
+              {category
+                ? [category, subcategory, ...Object.values(attributeValues)].join(' · ')
+                : 'Kategori seç'}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+          </Pressable>
 
           <Text style={styles.label}>Durum</Text>
           <View style={styles.conditionRow}>
@@ -209,7 +365,7 @@ export default function AddListingScreen({ navigation }: Props) {
           <Text style={styles.label}>Fiyat</Text>
           <PrefixInput
             prefix="₺"
-            value={price}
+            value={formatNumberInput(price)}
             onChangeText={(text) => setPrice(text.replace(/[^0-9]/g, ''))}
             placeholder="0"
             keyboardType="number-pad"
@@ -237,7 +393,7 @@ export default function AddListingScreen({ navigation }: Props) {
 
           <View style={styles.publishButton}>
             <PrimaryButton
-              label="İlanı Yayınla"
+              label={editListingId ? 'Değişiklikleri Kaydet' : 'İlanı Yayınla'}
               onPress={handlePublish}
               loading={submitting}
               disabled={!isValid}
@@ -251,6 +407,15 @@ export default function AddListingScreen({ navigation }: Props) {
         onClose={() => setLocationPickerVisible(false)}
         onSelect={setLocation}
       />
+
+      <CategoryPickerModal
+        visible={categoryPickerVisible}
+        onClose={() => setCategoryPickerVisible(false)}
+        onSelect={handleSelectCategory}
+        initialCategory={category}
+        initialSubcategory={subcategory}
+        initialAttributes={attributeValues}
+      />
     </SafeAreaView>
   );
 }
@@ -262,6 +427,9 @@ function createStyles(colors: ColorPalette) {
     backgroundColor: colors.background,
   },
   flex: {
+    flex: 1,
+  },
+  loading: {
     flex: 1,
   },
   scrollContent: {
@@ -334,9 +502,6 @@ function createStyles(colors: ColorPalette) {
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
-  },
-  chipRow: {
-    flexDirection: 'row',
   },
   conditionRow: {
     flexDirection: 'row',
