@@ -1,6 +1,6 @@
 const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
@@ -358,3 +358,19 @@ exports.cleanupExpiredListings = onSchedule(
     );
   }
 );
+
+// Android'de "Apple ile Giris" native degil, tarayici tabaninda calisir:
+// Apple, kullanici onayladiktan sonra sonucu bu adrese POST eder (form_post
+// - id_token/ad-soyad bilgisi icerdigi icin Apple bunu URL'de degil govdede
+// gondermeyi zorunlu kiliyor). Biz de bunu uygulamanin kendi ozel linkine
+// (stop82://) yonlendirip geri app'e teslim ediyoruz - authService.ts'teki
+// signInWithAppleAndroid bu linki WebBrowser.openAuthSessionAsync ile yakalar.
+exports.appleAuthCallback = onRequest({ region: REGION }, (req, res) => {
+  const body = req.body || {};
+  const params = new URLSearchParams();
+  if (body.id_token) params.set('id_token', body.id_token);
+  if (body.code) params.set('code', body.code);
+  if (body.state) params.set('state', body.state);
+  if (body.user) params.set('user', body.user);
+  res.redirect(302, `stop82://auth-callback?${params.toString()}`);
+});

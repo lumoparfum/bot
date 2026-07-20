@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -79,15 +79,13 @@ export default function AuthScreen({ navigation }: Props) {
             loading={loading}
             icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
           />
-          {Platform.OS === 'ios' && (
-            <PrimaryButton
-              label="Apple ile Giriş Yap"
-              variant="navy"
-              onPress={handleAppleSignIn}
-              loading={loading}
-              icon={<Ionicons name="logo-apple" size={18} color="#fff" />}
-            />
-          )}
+          <PrimaryButton
+            label="Apple ile Giriş Yap"
+            variant="navy"
+            onPress={handleAppleSignIn}
+            loading={loading}
+            icon={<Ionicons name="logo-apple" size={18} color="#fff" />}
+          />
         </View>
 
         <Text style={styles.terms}>
