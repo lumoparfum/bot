@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { showAlert } from '../components/AppAlert';
+import { CategoryChip } from '../components/CategoryChip';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -21,10 +22,17 @@ import { useAuth } from '../context/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { createSupportRequest } from '../services/support';
 import type { ProfileStackParamList } from '../types/navigation';
+import type { SupportRequestType } from '../types/support';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Help'>;
 
 type FaqItem = { id: string; question: string; answer: string };
+
+const REQUEST_TYPES: { type: SupportRequestType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { type: 'bug', label: 'Hata Bildir', icon: 'bug-outline' },
+  { type: 'suggestion', label: 'Öneri', icon: 'bulb-outline' },
+  { type: 'other', label: 'Diğer', icon: 'chatbubble-outline' },
+];
 
 const FAQ_ITEMS: FaqItem[] = [
   {
@@ -73,6 +81,7 @@ export default function HelpScreen({ navigation }: Props) {
   const requireAuth = useRequireAuth();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [requestType, setRequestType] = useState<SupportRequestType | null>(null);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -83,7 +92,7 @@ export default function HelpScreen({ navigation }: Props) {
   const handleSend = async () => {
     if (!requireAuth() || !user) return;
     const trimmed = message.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || !requestType || sending) return;
 
     setSending(true);
     try {
@@ -91,9 +100,11 @@ export default function HelpScreen({ navigation }: Props) {
         uid: user.uid,
         userName: user.displayName ?? 'Stop82 Kullanıcısı',
         userEmail: user.email,
+        type: requestType,
         message: trimmed,
       });
       setMessage('');
+      setRequestType(null);
       showAlert('Teşekkürler', 'Mesajın bize ulaştı, en kısa sürede döneceğiz.');
     } catch {
       showAlert('Hata', 'Mesajın gönderilemedi, tekrar dene.');
@@ -151,6 +162,17 @@ export default function HelpScreen({ navigation }: Props) {
               <Text style={styles.contactHint}>
                 Karşılaştığın bir sorunu, şikayeti ya da önerini yaz, sana en kısa sürede döneceğiz.
               </Text>
+              <View style={styles.typeRow}>
+                {REQUEST_TYPES.map((item) => (
+                  <CategoryChip
+                    key={item.type}
+                    label={item.label}
+                    icon={item.icon}
+                    selected={requestType === item.type}
+                    onPress={() => setRequestType(item.type)}
+                  />
+                ))}
+              </View>
               <TextInput
                 style={styles.input}
                 value={message}
@@ -163,7 +185,7 @@ export default function HelpScreen({ navigation }: Props) {
               <PrimaryButton
                 label={sending ? 'Gönderiliyor...' : 'Gönder'}
                 onPress={handleSend}
-                disabled={!message.trim() || sending}
+                disabled={!message.trim() || !requestType || sending}
                 loading={sending}
                 icon={!sending ? <Ionicons name="send-outline" size={16} color="#fff" /> : undefined}
               />
@@ -242,6 +264,11 @@ function createStyles(colors: ColorPalette) {
     contactHint: {
       ...typography.subhead,
       color: colors.textMuted,
+    },
+    typeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
     },
     input: {
       borderWidth: 1,
