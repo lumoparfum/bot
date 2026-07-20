@@ -121,6 +121,19 @@ const GARANTI_OPTIONS = ['Var', 'Yok'];
 const BEDEN_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Diğer'];
 const NUMARA_OPTIONS = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 const CINSIYET_OPTIONS = ['Kadın', 'Erkek', 'Çocuk', 'Unisex'];
+// Dolap'in resmi ilan kurallari Marka'yi "cekirdek" alanlardan biri olarak
+// listeliyor (arama/siralama algoritmasi bunu kullaniyor) - biz de Giyim ve
+// Ayakkabi & Canta'da ayni sekilde ekliyoruz. Dolap'taki gibi zorunlu ve
+// eslesmezse ilan silen bir kontrol degil - "Diger" her zaman kaçış kapisi,
+// kullaniciyi hic cezalandirmiyoruz.
+const GIYIM_MARKA_OPTIONS = [
+  'Zara', 'Bershka', 'Pull & Bear', 'Stradivarius', 'Mango', 'H&M', 'LC Waikiki',
+  'Koton', 'Defacto', 'Mavi', 'İpekyol', 'Network', 'Diğer',
+];
+const AYAKKABI_CANTA_MARKA_OPTIONS = [
+  'Nike', 'Adidas', 'Puma', 'New Balance', 'Converse', 'Skechers',
+  'Michael Kors', 'Guess', 'Furla', 'Zara', 'Mango', 'LC Waikiki', 'Diğer',
+];
 
 // Rakiplerdeki (letgo, Dolap, sahibinden) gibi kategoriye ozel yapilandirilmis
 // alanlar - hepsi opsiyonel. Arac ve Emlak da dahil (km/m2/yil "number" tipi
@@ -144,12 +157,16 @@ export const categoryAttributes: Record<string, AttributeDef[]> = {
   ],
   Giyim: [
     { key: 'Cinsiyet', label: 'Cinsiyet', options: CINSIYET_OPTIONS },
+    { key: 'Marka', label: 'Marka', options: GIYIM_MARKA_OPTIONS },
     { key: 'Beden', label: 'Beden', options: BEDEN_OPTIONS },
     { key: 'Renk', label: 'Renk', options: RENK_OPTIONS },
   ],
+  // Numara (ayakkabi bedeni) burada YOK - Sirt Cantasi/Cuzdan gibi alt
+  // kategorilerde anlamsiz oldugu icin asagida getAttributeDefs'te sadece
+  // gercek ayakkabi alt kategorilerinde dinamik olarak ekleniyor.
   'Ayakkabı & Çanta': [
     { key: 'Cinsiyet', label: 'Cinsiyet', options: CINSIYET_OPTIONS },
-    { key: 'Numara', label: 'Numara', options: NUMARA_OPTIONS },
+    { key: 'Marka', label: 'Marka', options: AYAKKABI_CANTA_MARKA_OPTIONS },
     { key: 'Renk', label: 'Renk', options: RENK_OPTIONS },
   ],
   'Oyun & Konsol': [
@@ -253,12 +270,27 @@ export const carModels: Record<string, string[]> = {
   Tesla: ['Model 3', 'Model Y', 'Model S', 'Model X', 'Diğer'],
 };
 
+// Numara (ayakkabi numarasi) sadece gercek ayakkabi alt kategorilerinde
+// soruluyor - Sirt Cantasi, Omuz & Askili Canta, Cuzdan & Portfoy gibi
+// canta/cuzdan turlerinde ayakkabi numarasi sormanin bir anlami yok.
+const AYAKKABI_NUMARA_SUBCATEGORIES = new Set([
+  'Spor Ayakkabı', 'Bot & Çizme', 'Sandalet & Terlik', 'Topuklu Ayakkabı', 'Babet & Oxford',
+]);
+
 // "Arac Aksesuari & Yedek Parca" bir tasit degil, km/yil gibi arac
 // alanlarinin orada anlami yok - bu alt kategoride ozellik sorulmaz.
 export function getAttributeDefs(category: string | null, subcategory: string | null): AttributeDef[] {
   if (!category) return [];
   if (category === 'Araç' && subcategory === 'Araç Aksesuarı & Yedek Parça') return [];
-  return categoryAttributes[category] ?? [];
+  const base = categoryAttributes[category] ?? [];
+  if (category === 'Ayakkabı & Çanta' && subcategory && AYAKKABI_NUMARA_SUBCATEGORIES.has(subcategory)) {
+    const markaIndex = base.findIndex((def) => def.key === 'Marka');
+    const numaraDef: AttributeDef = { key: 'Numara', label: 'Numara', options: NUMARA_OPTIONS };
+    const next = [...base];
+    next.splice(markaIndex + 1, 0, numaraDef);
+    return next;
+  }
+  return base;
 }
 
 // Sihirbaz her adimda bunu cagirir: Marka secilmisse (sadece Otomobil'de) ve
