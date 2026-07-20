@@ -74,25 +74,7 @@
         <div class="hero-visual">
           <div class="phone-frame">
             <div class="screen">
-              <div class="mock-screen mock-home">
-                <div class="mock-topbar">
-                  <span class="mock-word">Stop<b>82</b></span>
-                  <span class="mock-bell">🔔</span>
-                </div>
-                <div class="mock-search">🔍 Ne arıyorsun?</div>
-                <div class="mock-chips">
-                  <span class="chip active">Tümü</span>
-                  <span class="chip">Telefon</span>
-                  <span class="chip">Araç</span>
-                  <span class="chip">Emlak</span>
-                </div>
-                <div class="mock-grid">
-                  <div class="mock-card"><div class="mock-thumb"></div><div class="mock-line w60"></div><div class="mock-line w40 price"></div></div>
-                  <div class="mock-card"><div class="mock-thumb alt"></div><div class="mock-line w70"></div><div class="mock-line w40 price"></div></div>
-                  <div class="mock-card"><div class="mock-thumb"></div><div class="mock-line w50"></div><div class="mock-line w40 price"></div></div>
-                  <div class="mock-card"><div class="mock-thumb alt"></div><div class="mock-line w60"></div><div class="mock-line w40 price"></div></div>
-                </div>
-              </div>
+              <img src="assets/screenshots/home.jpeg" alt="Stop82 ana sayfa" />
             </div>
           </div>
           <div class="floating-card top"><span class="dot"></span> Komisyon: ₺0</div>
@@ -251,55 +233,28 @@
         <div class="screens-strip reveal">
           <div class="screen-item">
             <div class="device"><div class="screen">
-              <div class="mock-screen mock-home compact">
-                <div class="mock-topbar"><span class="mock-word">Stop<b>82</b></span></div>
-                <div class="mock-search">🔍 Ne arıyorsun?</div>
-                <div class="mock-grid">
-                  <div class="mock-card"><div class="mock-thumb"></div><div class="mock-line w60"></div><div class="mock-line w40 price"></div></div>
-                  <div class="mock-card"><div class="mock-thumb alt"></div><div class="mock-line w70"></div><div class="mock-line w40 price"></div></div>
-                </div>
-              </div>
+              <img src="assets/screenshots/home.jpeg" alt="Stop82 ana sayfa" />
             </div></div>
             <p class="caption">Ana Sayfa</p>
           </div>
 
           <div class="screen-item">
             <div class="device"><div class="screen">
-              <div class="mock-screen mock-wizard compact">
-                <div class="mock-topbar"><span class="mock-title">Kategori Seç</span></div>
-                <div class="mock-cat-grid">
-                  <div class="mock-cat">📱</div><div class="mock-cat">🚗</div>
-                  <div class="mock-cat">🏠</div><div class="mock-cat">👕</div>
-                  <div class="mock-cat">💻</div><div class="mock-cat">⚽</div>
-                </div>
-              </div>
+              <img src="assets/screenshots/kategori.jpeg" alt="Stop82 kategori sihirbazı" />
             </div></div>
             <p class="caption">Kategori Sihirbazı</p>
           </div>
 
           <div class="screen-item">
             <div class="device"><div class="screen">
-              <div class="mock-screen mock-detail compact">
-                <div class="mock-hero-img"></div>
-                <div class="mock-detail-body">
-                  <div class="mock-line w80 title"></div>
-                  <div class="mock-line w30 price"></div>
-                  <div class="mock-seller-row"><span class="mock-avatar"></span><div class="mock-line w50"></div></div>
-                  <div class="mock-btn">Mesaj Gönder</div>
-                </div>
-              </div>
+              <img src="assets/screenshots/detay.jpeg" alt="Stop82 ilan detayı" />
             </div></div>
             <p class="caption">İlan Detayı</p>
           </div>
 
           <div class="screen-item">
             <div class="device"><div class="screen">
-              <div class="mock-screen mock-chat compact">
-                <div class="mock-topbar"><span class="mock-title">Ahmet Y.</span></div>
-                <div class="mock-bubble left">Merhaba, hâlâ duruyor mu?</div>
-                <div class="mock-bubble right">Evet, hemen buluşabiliriz 👍</div>
-                <div class="mock-bubble left">Süper, yarın 5'te?</div>
-              </div>
+              <img src="assets/screenshots/sohbet.jpeg" alt="Stop82 sohbet ekranı" />
             </div></div>
             <p class="caption">Sohbet</p>
           </div>
@@ -391,45 +346,6 @@
       </div>
     </div>
   </footer>
-
-  <style>
-    /* Uygulama ekranı minyatürleri - gerçek ekran görüntüsü gelene kadar,
-       aynı tasarım diline (renkler/tipografi) sadık kalınarak HTML/CSS ile
-       çizilmiş sahte ama tutarlı önizlemeler. */
-    .mock-screen { width: 100%; height: 100%; background: #fff; padding: 14px 12px; font-family: inherit; overflow: hidden; }
-    .mock-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .mock-word { font-weight: 800; font-size: 15px; color: var(--text); }
-    .mock-word b { color: var(--primary); font-weight: 800; }
-    .mock-title { font-weight: 700; font-size: 15px; color: var(--text); }
-    .mock-bell { font-size: 14px; }
-    .mock-search { background: var(--surface); border-radius: var(--radius-pill); padding: 9px 12px; font-size: 12px; color: var(--text-faint); margin-bottom: 10px; }
-    .mock-chips { display: flex; gap: 6px; margin-bottom: 12px; }
-    .chip { font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: var(--radius-pill); background: var(--surface); color: var(--text-muted); }
-    .chip.active { background: var(--primary); color: #fff; }
-    .mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mock-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px; }
-    .mock-thumb { background: var(--surface-alt); border-radius: 7px; height: 56px; margin-bottom: 6px; }
-    .mock-thumb.alt { background: var(--primary-light); }
-    .mock-line { height: 6px; border-radius: 3px; background: var(--border); margin-bottom: 5px; }
-    .mock-line.w80 { width: 80%; } .mock-line.w70 { width: 70%; } .mock-line.w60 { width: 60%; }
-    .mock-line.w50 { width: 50%; } .mock-line.w40 { width: 40%; } .mock-line.w30 { width: 30%; }
-    .mock-line.price { background: var(--primary); height: 7px; }
-    .mock-line.title { height: 9px; background: var(--navy); margin-bottom: 8px; }
-
-    .mock-cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
-    .mock-cat { background: var(--surface); border-radius: 12px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-
-    .mock-hero-img { height: 44%; background: linear-gradient(135deg, var(--primary-light), var(--surface-alt)); }
-    .mock-detail-body { padding: 14px 10px; }
-    .mock-seller-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 14px; }
-    .mock-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--navy-light); display: inline-block; }
-    .mock-btn { background: var(--primary); color: #fff; text-align: center; font-size: 11px; font-weight: 700; padding: 9px; border-radius: 10px; }
-
-    .mock-bubble { max-width: 78%; font-size: 11px; padding: 8px 10px; border-radius: 12px; margin-bottom: 8px; line-height: 1.4; }
-    .mock-bubble.left { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .mock-bubble.right { background: var(--primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
-    .mock-chat { display: flex; flex-direction: column; }
-  </style>
 
   <script type="module" src="firebase-init.js"></script>
   <script defer src="script.js"></script>
