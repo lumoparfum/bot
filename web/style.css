@@ -885,9 +885,17 @@ body::before {
 
 /* Responsive */
 @media (max-width: 880px) {
+  .nav .container {
+    height: 60px;
+  }
+
+  .wordmark {
+    font-size: 20px;
+  }
+
   .nav-links {
     position: fixed;
-    top: 68px;
+    top: 60px;
     left: 0;
     right: 0;
     background: #fff;
