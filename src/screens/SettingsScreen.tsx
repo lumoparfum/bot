@@ -81,11 +81,13 @@ export default function SettingsScreen({ navigation }: Props) {
       showAlert('İzin gerekli', 'Fotoğraf seçebilmek için galeri erişimine izin ver.');
       return;
     }
+    // Native kirpma ekrani (allowsEditing) Android'de bazen onceki ekranin
+    // arkasinda kalarak gorsel bir hataya yol aciyordu - artik kirpma
+    // uploadAvatarImage icinde (compressAvatarImage) otomatik ve ortadan
+    // yapiliyor, kullaniciya ekstra bir ekran gosterilmiyor.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
     });
     if (result.canceled || !result.assets[0]) return;
 

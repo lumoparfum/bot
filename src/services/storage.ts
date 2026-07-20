@@ -19,15 +19,39 @@ function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   });
 }
 
-async function compress(uri: string, targetDimension: number, maxFileBytes: number): Promise<Blob> {
+async function compress(
+  uri: string,
+  targetDimension: number,
+  maxFileBytes: number,
+  square = false
+): Promise<Blob> {
   const { width, height } = await getImageSize(uri);
-  const longestSide = Math.max(width, height);
+  const actions: ImageManipulator.Action[] = [];
+  let workingWidth = width;
+  let workingHeight = height;
+
+  if (square) {
+    // Avatar dairesel gosterildigi icin ortadan kare kirpilir - boylece
+    // kullaniciya native kirpma ekranini gostermemize gerek kalmiyor
+    // (Android'de bu ekran bazen onceki ekranin arkasinda kalarak gorsel
+    // bir hataya yol aciyordu).
+    const side = Math.min(width, height);
+    actions.push({
+      crop: { originX: (width - side) / 2, originY: (height - side) / 2, width: side, height: side },
+    });
+    workingWidth = side;
+    workingHeight = side;
+  }
+
+  const longestSide = Math.max(workingWidth, workingHeight);
   const targetSide = Math.min(targetDimension, longestSide);
-  const resizeAction = width >= height ? { resize: { width: targetSide } } : { resize: { height: targetSide } };
+  actions.push(
+    workingWidth >= workingHeight ? { resize: { width: targetSide } } : { resize: { height: targetSide } }
+  );
 
   let lastBlob: Blob | null = null;
   for (const quality of QUALITY_STEPS) {
-    const result = await ImageManipulator.manipulateAsync(uri, [resizeAction], {
+    const result = await ImageManipulator.manipulateAsync(uri, actions, {
       compress: quality,
       format: ImageManipulator.SaveFormat.JPEG,
     });
@@ -45,14 +69,23 @@ export async function compressImage(uri: string): Promise<Blob> {
 }
 
 function compressAvatarImage(uri: string): Promise<Blob> {
-  return compress(uri, AVATAR_TARGET_DIMENSION, AVATAR_MAX_FILE_BYTES);
+  return compress(uri, AVATAR_TARGET_DIMENSION, AVATAR_MAX_FILE_BYTES, true);
 }
 
-export async function uploadListingImages(listingId: string, localUris: string[]): Promise<string[]> {
+// Yol icinde sellerId tasinir (listings/{listingId}/{sellerId}/{dosya}) -
+// storage.rules bu sayede sahiplik dogrulamasini Firestore'a hic
+// sormadan, dogrudan yoldan yapabiliyor. Firestore'a capraz sorgu yapan
+// onceki kural (firestore.get) canli ortamda guvenilmez cikti - kullanici
+// duzenlemede yeni fotograf eklerken "kaydedilemedi" hatasi alıyordu.
+export async function uploadListingImages(
+  listingId: string,
+  sellerId: string,
+  localUris: string[]
+): Promise<string[]> {
   const urls: string[] = [];
   for (let i = 0; i < localUris.length; i++) {
     const blob = await compressImage(localUris[i]);
-    const imageRef = ref(storage, `listings/${listingId}/${i}-${Date.now()}.jpg`);
+    const imageRef = ref(storage, `listings/${listingId}/${sellerId}/${i}-${Date.now()}.jpg`);
     await uploadBytes(imageRef, blob);
     urls.push(await getDownloadURL(imageRef));
   }
@@ -62,7 +95,15 @@ export async function uploadListingImages(listingId: string, localUris: string[]
 export async function deleteListingImages(listingId: string): Promise<void> {
   const folderRef = ref(storage, `listings/${listingId}`);
   const result = await listAll(folderRef);
+  // Eski (goc oncesi) duz yoldaki dosyalar, varsa.
   await Promise.all(result.items.map((item) => deleteObject(item).catch(() => {})));
+  // Yeni yapida resimler {sellerId} alt klasorunde - o klasorleri de gez.
+  await Promise.all(
+    result.prefixes.map(async (prefixRef) => {
+      const subResult = await listAll(prefixRef);
+      await Promise.all(subResult.items.map((item) => deleteObject(item).catch(() => {})));
+    })
+  );
 }
 
 // Sabit dosya adi (photo.jpg) kullanilir - her degisiklikte eskisinin

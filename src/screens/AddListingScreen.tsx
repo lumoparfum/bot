@@ -31,6 +31,7 @@ import {
   createListing,
   fetchListingById,
   updateListing,
+  type ListingImageSlot,
 } from '../services/firestore';
 import { deleteImageByUrl } from '../services/storage';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,11 @@ import type { MainTabParamList } from '../types/navigation';
 
 const MAX_PHOTOS = 4;
 const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: null };
+
+// Ilk fotograf "kapak" olarak kullanilir (ana sayfadaki ilan kartinda
+// gorunen resim budur) - tek sirali liste tutuluyor ki kullanici yeni
+// ekledigi bir fotografi da kapak yapabilsin, sadece eski fotograflari degil.
+type PhotoItem = { id: string; kind: 'existing' | 'new'; uri: string };
 
 type Props = BottomTabScreenProps<MainTabParamList, 'AddListing'>;
 
@@ -49,9 +55,8 @@ export default function AddListingScreen({ navigation, route }: Props) {
   const editListingId = route.params?.editListingId ?? null;
 
   const [loadingExisting, setLoadingExisting] = useState(!!editListingId);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
   const [removedImages, setRemovedImages] = useState<string[]>([]);
-  const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [subcategory, setSubcategory] = useState<string | null>(null);
@@ -86,7 +91,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
         setOriginalPrice(listing.price);
         setDescription(listing.description);
         setLocation(listing.location);
-        setExistingImages(listing.images);
+        setPhotoItems(listing.images.map((url) => ({ id: url, kind: 'existing' as const, uri: url })));
       })
       .finally(() => {
         if (!cancelled) setLoadingExisting(false);
@@ -123,7 +128,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
     );
   }
 
-  const totalPhotoCount = existingImages.length + photos.length;
+  const totalPhotoCount = photoItems.length;
   const isValid =
     totalPhotoCount > 0 &&
     title.trim().length >= 3 &&
@@ -161,22 +166,35 @@ export default function AddListingScreen({ navigation, route }: Props) {
     });
 
     if (!result.canceled) {
-      setPhotos((prev) => [...prev, ...result.assets.map((asset) => asset.uri)]);
+      setPhotoItems((prev) => [
+        ...prev,
+        ...result.assets.map((asset) => ({ id: asset.uri, kind: 'new' as const, uri: asset.uri })),
+      ]);
     }
   };
 
-  const removePhoto = (uri: string) => {
-    setPhotos((prev) => prev.filter((p) => p !== uri));
+  const removePhoto = (id: string) => {
+    const item = photoItems.find((p) => p.id === id);
+    if (!item) return;
+    setPhotoItems((prev) => prev.filter((p) => p.id !== id));
+    if (item.kind === 'existing') {
+      setRemovedImages((prev) => [...prev, item.uri]);
+    }
   };
 
-  const removeExistingImage = (url: string) => {
-    setExistingImages((prev) => prev.filter((u) => u !== url));
-    setRemovedImages((prev) => [...prev, url]);
+  const makeCoverPhoto = (id: string) => {
+    setPhotoItems((prev) => {
+      const index = prev.findIndex((p) => p.id === id);
+      if (index <= 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.unshift(item);
+      return next;
+    });
   };
 
   const resetForm = () => {
-    setPhotos([]);
-    setExistingImages([]);
+    setPhotoItems([]);
     setRemovedImages([]);
     setTitle('');
     setCategory(null);
@@ -222,6 +240,9 @@ export default function AddListingScreen({ navigation, route }: Props) {
         }
       }
       if (editListingId) {
+        const imageSlots: ListingImageSlot[] = photoItems.map((item) =>
+          item.kind === 'existing' ? { kind: 'existing', url: item.uri } : { kind: 'new', uri: item.uri }
+        );
         await updateListing(
           editListingId,
           {
@@ -233,8 +254,8 @@ export default function AddListingScreen({ navigation, route }: Props) {
             attributes: attributeValues,
             condition,
             location,
-            existingImages,
-            newLocalImageUris: photos,
+            images: imageSlots,
+            sellerId: user.uid,
           },
           originalPrice ?? Number(price)
         );
@@ -254,7 +275,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
           subcategory,
           attributes: attributeValues,
           condition,
-          localImageUris: photos,
+          localImageUris: photoItems.map((item) => item.uri),
           location,
           sellerId: user.uid,
           sellerName: user.displayName ?? 'Stop82 Kullanıcısı',
@@ -302,22 +323,27 @@ export default function AddListingScreen({ navigation, route }: Props) {
           </Text>
 
           <Text style={styles.label}>Fotoğraflar</Text>
+          {photoItems.length > 1 && (
+            <Text style={styles.photoHint}>İlk fotoğraf kapak olur - başka birini kapak yapmak için ona dokun.</Text>
+          )}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
-            {existingImages.map((uri) => (
-              <View key={uri} style={styles.photoTile}>
-                <Image source={{ uri }} style={styles.photoImage} contentFit="cover" />
-                <Pressable style={styles.removePhotoButton} onPress={() => removeExistingImage(uri)}>
+            {photoItems.map((item, index) => (
+              <Pressable
+                key={item.id}
+                style={styles.photoTile}
+                onPress={() => makeCoverPhoto(item.id)}
+                disabled={index === 0}
+              >
+                <Image source={{ uri: item.uri }} style={styles.photoImage} contentFit="cover" />
+                {index === 0 && (
+                  <View style={styles.coverBadge}>
+                    <Text style={styles.coverBadgeText}>Kapak</Text>
+                  </View>
+                )}
+                <Pressable style={styles.removePhotoButton} onPress={() => removePhoto(item.id)}>
                   <Ionicons name="close" size={12} color="#fff" />
                 </Pressable>
-              </View>
-            ))}
-            {photos.map((uri) => (
-              <View key={uri} style={styles.photoTile}>
-                <Image source={{ uri }} style={styles.photoImage} contentFit="cover" />
-                <Pressable style={styles.removePhotoButton} onPress={() => removePhoto(uri)}>
-                  <Ionicons name="close" size={12} color="#fff" />
-                </Pressable>
-              </View>
+              </Pressable>
             ))}
             {totalPhotoCount < MAX_PHOTOS && (
               <Pressable style={styles.addPhotoTile} onPress={handlePickPhotos}>
@@ -453,6 +479,11 @@ function createStyles(colors: ColorPalette) {
     marginBottom: spacing.sm,
     marginTop: spacing.lg,
   },
+  photoHint: {
+    ...typography.caption,
+    color: colors.textFaint,
+    marginBottom: spacing.sm,
+  },
   photoRow: {
     flexDirection: 'row',
   },
@@ -463,6 +494,21 @@ function createStyles(colors: ColorPalette) {
     marginRight: spacing.sm,
     overflow: 'hidden',
     backgroundColor: colors.surface,
+  },
+  coverBadge: {
+    position: 'absolute',
+    left: 4,
+    bottom: 4,
+    backgroundColor: 'rgba(26, 34, 56, 0.75)',
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  coverBadgeText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   photoImage: {
     width: '100%',

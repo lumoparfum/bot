@@ -86,7 +86,7 @@ export async function createListing(input: NewListingInput): Promise<string> {
     favoriteCount: 0,
     priceHistory: [{ price: input.price, changedAt: Date.now() }],
   });
-  const images = await uploadListingImages(newDocRef.id, input.localImageUris);
+  const images = await uploadListingImages(newDocRef.id, input.sellerId, input.localImageUris);
   await updateDoc(newDocRef, { images });
   return newDocRef.id;
 }
@@ -129,6 +129,13 @@ export async function checkListingCreationAllowed(
   return { allowed: true, reason: null };
 }
 
+// Fotograflarin ekrandaki sirasi ("kapak fotografi" hangisi) korunsun diye
+// tek bir sirali liste kullanilir - "once eskiler, sonra yeniler" gibi sabit
+// bir birlestirme yapilirsa, kullanici yeni eklediği bir fotografi kapak
+// yapmak isteyip eskilerden birini geriye alsa bile kaydedilen sirada yine
+// tum eski fotograflar basa dusuyordu.
+export type ListingImageSlot = { kind: 'existing'; url: string } | { kind: 'new'; uri: string };
+
 export type ListingUpdateInput = {
   title: string;
   description: string;
@@ -138,8 +145,8 @@ export type ListingUpdateInput = {
   attributes: Record<string, string>;
   condition: ListingCondition;
   location: ListingLocation;
-  existingImages: string[];
-  newLocalImageUris: string[];
+  images: ListingImageSlot[];
+  sellerId: string;
 };
 
 export async function updateListing(
@@ -147,7 +154,12 @@ export async function updateListing(
   input: ListingUpdateInput,
   previousPrice: number
 ): Promise<void> {
-  const uploadedUrls = await uploadListingImages(listingId, input.newLocalImageUris);
+  const newUris = input.images.filter((slot) => slot.kind === 'new').map((slot) => slot.uri);
+  const uploadedUrls = await uploadListingImages(listingId, input.sellerId, newUris);
+  let uploadIndex = 0;
+  const images = input.images.map((slot) =>
+    slot.kind === 'existing' ? slot.url : uploadedUrls[uploadIndex++]
+  );
   const updates: Record<string, unknown> = {
     title: input.title,
     description: input.description,
@@ -157,7 +169,7 @@ export async function updateListing(
     attributes: input.attributes,
     condition: input.condition,
     location: input.location,
-    images: [...input.existingImages, ...uploadedUrls],
+    images,
   };
   // Fiyat gercekten degistiyse gecmise bir kayit ekle - "fiyat dustu" gostergesi bunu kullanir.
   if (input.price !== previousPrice) {
