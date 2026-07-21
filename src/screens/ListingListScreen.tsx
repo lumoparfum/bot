@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -9,8 +10,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -26,6 +29,7 @@ import { radius, spacing, typography, type ColorPalette } from '../constants/the
 import { useTheme } from '../context/ThemeContext';
 import { categories, categoryIcons, conditions, getAttributeDefs, subcategories } from '../types/listing';
 import type { AttributeDef, Listing, ListingLocation } from '../types/listing';
+import { getTabBarStyle } from '../navigation/tabBarStyle';
 import { fetchListings } from '../services/firestore';
 import { fetchBlockedUserIds } from '../services/blocks';
 import { createSavedSearch } from '../services/savedSearches';
@@ -43,6 +47,13 @@ import {
   type Coordinates,
 } from '../utils/location';
 import type { HomeStackParamList } from '../types/navigation';
+
+// Eski (Fabric-oncesi) Android koprusunde LayoutAnimation varsayilan kapali -
+// alt bar'in kaydirinca yumusakca kaybolup gorunmesi bu bayrak olmadan
+// calismiyor.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const ALL = 'Tümü';
 
@@ -129,6 +140,52 @@ export default function ListingListScreen({ navigation }: Props) {
     locationFilterActive ||
     selectedCondition !== null ||
     Object.keys(selectedAttrFilters).length > 0;
+
+  // Dolap gibi rakiplerde de var: asagi kaydirinca alt sekme cubugu
+  // kayboluyor, yukari kaydirinca (ya da en tepeye donunce) geri geliyor -
+  // listeye daha fazla ekran alani birakiyor. tabBarStyle Tab.Navigator
+  // seviyesinde tutuldugu icin navigation.getParent() ile oradan degistiriliyor.
+  const tabBarHidden = useRef(false);
+  const lastScrollY = useRef(0);
+  const SCROLL_HIDE_THRESHOLD = 12;
+
+  const handleListScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const delta = currentY - lastScrollY.current;
+    const parent = navigation.getParent();
+
+    if (parent) {
+      if (currentY <= 0 && tabBarHidden.current) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        parent.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
+        tabBarHidden.current = false;
+      } else if (delta > SCROLL_HIDE_THRESHOLD && !tabBarHidden.current) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        parent.setOptions({ tabBarStyle: { display: 'none' } });
+        tabBarHidden.current = true;
+      } else if (delta < -SCROLL_HIDE_THRESHOLD && tabBarHidden.current) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        parent.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
+        tabBarHidden.current = false;
+      }
+    }
+    lastScrollY.current = currentY;
+  };
+
+  // Ekrandan ayrilirken (baska sekmeye gecince) bar gizli kalmis olabilir -
+  // geri donulunce her zaman gorunur baslasin.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        if (tabBarHidden.current) {
+          navigation.getParent()?.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
+          tabBarHidden.current = false;
+          lastScrollY.current = 0;
+        }
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const loadListings = useCallback(async () => {
     try {
@@ -330,6 +387,8 @@ export default function ListingListScreen({ navigation }: Props) {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContent}
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         ListHeaderComponent={

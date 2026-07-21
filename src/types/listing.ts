@@ -42,7 +42,8 @@ export const categories = [
   'Telefon',
   'Araç',
   'Giyim',
-  'Ayakkabı & Çanta',
+  'Ayakkabı',
+  'Çanta',
   'Elektronik',
   'Ev Eşyası',
   'Mobilya',
@@ -77,17 +78,8 @@ export const subcategories: Record<string, string[]> = {
     'İç Giyim & Pijama',
     'Diğer Giyim',
   ],
-  'Ayakkabı & Çanta': [
-    'Spor Ayakkabı',
-    'Bot & Çizme',
-    'Sandalet & Terlik',
-    'Topuklu Ayakkabı',
-    'Babet & Oxford',
-    'Sırt Çantası',
-    'Omuz & Askılı Çanta',
-    'Cüzdan & Portföy',
-    'Diğer',
-  ],
+  Ayakkabı: ['Spor Ayakkabı', 'Bot & Çizme', 'Sandalet & Terlik', 'Topuklu Ayakkabı', 'Babet & Oxford', 'Diğer'],
+  Çanta: ['El Çantası', 'Omuz & Askılı Çanta', 'Sırt Çantası', 'Cüzdan & Portföy', 'Diğer'],
   Elektronik: ['Televizyon', 'Ses Sistemi & Kulaklık', 'Kamera & Fotoğraf', 'Beyaz Eşya', 'Küçük Ev Aletleri', 'Diğer Elektronik'],
   'Ev Eşyası': ['Mutfak Gereçleri', 'Dekorasyon', 'Aydınlatma', 'Halı & Tekstil', 'Bahçe & Balkon', 'Diğer'],
   Mobilya: ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Ofis Mobilyası', 'Çocuk Odası', 'Diğer Mobilya'],
@@ -133,10 +125,8 @@ const GIYIM_MARKA_OPTIONS = [
   'Zara', 'Bershka', 'Pull & Bear', 'Stradivarius', 'Mango', 'H&M', 'LC Waikiki',
   'Koton', 'Defacto', 'Mavi', 'İpekyol', 'Network', 'Diğer',
 ];
-const AYAKKABI_CANTA_MARKA_OPTIONS = [
-  'Nike', 'Adidas', 'Puma', 'New Balance', 'Converse', 'Skechers',
-  'Michael Kors', 'Guess', 'Furla', 'Zara', 'Mango', 'LC Waikiki', 'Diğer',
-];
+const AYAKKABI_MARKA_OPTIONS = ['Nike', 'Adidas', 'Puma', 'New Balance', 'Converse', 'Skechers', 'Diğer'];
+const CANTA_MARKA_OPTIONS = ['Michael Kors', 'Guess', 'Furla', 'Zara', 'Mango', 'LC Waikiki', 'Diğer'];
 
 // Rakiplerdeki (letgo, Dolap, sahibinden) gibi kategoriye ozel yapilandirilmis
 // alanlar - hepsi opsiyonel. Arac ve Emlak da dahil (km/m2/yil "number" tipi
@@ -173,12 +163,15 @@ export const categoryAttributes: Record<string, AttributeDef[]> = {
       placeholder: 'Örn. Göğüs 90cm, Bel 74cm, Boy 150cm',
     },
   ],
-  // Numara (ayakkabi bedeni) burada YOK - Sirt Cantasi/Cuzdan gibi alt
-  // kategorilerde anlamsiz oldugu icin asagida getAttributeDefs'te sadece
-  // gercek ayakkabi alt kategorilerinde dinamik olarak ekleniyor.
-  'Ayakkabı & Çanta': [
+  Ayakkabı: [
     { key: 'Cinsiyet', label: 'Cinsiyet', options: CINSIYET_OPTIONS },
-    { key: 'Marka', label: 'Marka', options: AYAKKABI_CANTA_MARKA_OPTIONS },
+    { key: 'Marka', label: 'Marka', options: AYAKKABI_MARKA_OPTIONS },
+    { key: 'Numara', label: 'Numara', options: NUMARA_OPTIONS },
+    { key: 'Renk', label: 'Renk', options: RENK_OPTIONS },
+  ],
+  Çanta: [
+    { key: 'Cinsiyet', label: 'Cinsiyet', options: CINSIYET_OPTIONS },
+    { key: 'Marka', label: 'Marka', options: CANTA_MARKA_OPTIONS },
     { key: 'Renk', label: 'Renk', options: RENK_OPTIONS },
   ],
   'Oyun & Konsol': [
@@ -282,27 +275,12 @@ export const carModels: Record<string, string[]> = {
   Tesla: ['Model 3', 'Model Y', 'Model S', 'Model X', 'Diğer'],
 };
 
-// Numara (ayakkabi numarasi) sadece gercek ayakkabi alt kategorilerinde
-// soruluyor - Sirt Cantasi, Omuz & Askili Canta, Cuzdan & Portfoy gibi
-// canta/cuzdan turlerinde ayakkabi numarasi sormanin bir anlami yok.
-const AYAKKABI_NUMARA_SUBCATEGORIES = new Set([
-  'Spor Ayakkabı', 'Bot & Çizme', 'Sandalet & Terlik', 'Topuklu Ayakkabı', 'Babet & Oxford',
-]);
-
 // "Arac Aksesuari & Yedek Parca" bir tasit degil, km/yil gibi arac
 // alanlarinin orada anlami yok - bu alt kategoride ozellik sorulmaz.
 export function getAttributeDefs(category: string | null, subcategory: string | null): AttributeDef[] {
   if (!category) return [];
   if (category === 'Araç' && subcategory === 'Araç Aksesuarı & Yedek Parça') return [];
-  const base = categoryAttributes[category] ?? [];
-  if (category === 'Ayakkabı & Çanta' && subcategory && AYAKKABI_NUMARA_SUBCATEGORIES.has(subcategory)) {
-    const markaIndex = base.findIndex((def) => def.key === 'Marka');
-    const numaraDef: AttributeDef = { key: 'Numara', label: 'Numara', options: NUMARA_OPTIONS };
-    const next = [...base];
-    next.splice(markaIndex + 1, 0, numaraDef);
-    return next;
-  }
-  return base;
+  return categoryAttributes[category] ?? [];
 }
 
 // Sihirbaz her adimda bunu cagirir: Marka secilmisse (sadece Otomobil'de) ve
@@ -335,7 +313,8 @@ export const categoryIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   'Ev Eşyası': 'home-outline',
   Mobilya: 'cube-outline',
   Giyim: 'shirt-outline',
-  'Ayakkabı & Çanta': 'bag-handle-outline',
+  Ayakkabı: 'footsteps-outline',
+  Çanta: 'bag-handle-outline',
   Araç: 'car-outline',
   Emlak: 'business-outline',
   'Anne & Bebek': 'happy-outline',

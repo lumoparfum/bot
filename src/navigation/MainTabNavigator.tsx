@@ -6,9 +6,9 @@ import HomeStackNavigator from './HomeStackNavigator';
 import AddListingScreen from '../screens/AddListingScreen';
 import MessagesStackNavigator from './MessagesStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
-import { shadows } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useMessages } from '../context/MessagesContext';
+import { getTabBarStyle } from './tabBarStyle';
 import type { MainTabParamList } from '../types/navigation';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -32,14 +32,7 @@ export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const { totalUnread } = useMessages();
 
-  const baseTabBarStyle = {
-    backgroundColor: colors.background,
-    borderTopColor: colors.divider,
-    height: 62 + insets.bottom,
-    paddingTop: 8,
-    paddingBottom: insets.bottom + 8,
-    ...shadows.raised,
-  };
+  const baseTabBarStyle = getTabBarStyle(colors, insets.bottom);
 
   const hideTabBarWhenNested = ({ route }: { route: { name: string; params?: object } }) => {
     const focusedRoute = getFocusedRouteNameFromRoute(route);
