@@ -434,7 +434,9 @@ export default function ListingListScreen({ navigation }: Props) {
               <Text style={styles.emptyText}>
                 {loadError
                   ? 'İlanlar yüklenemedi. Aşağı çekip tekrar dene.'
-                  : 'Aramanla eşleşen ilan bulunamadı.'}
+                  : selectedCategory === 'Emlak'
+                    ? 'Emlak kategorisi yakında aktif olacak.'
+                    : 'Aramanla eşleşen ilan bulunamadı.'}
               </Text>
             </View>
           ) : null

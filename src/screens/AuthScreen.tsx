@@ -38,7 +38,10 @@ export default function AuthScreen({ navigation }: Props) {
       if (navigation.canGoBack()) navigation.goBack();
     } catch (err: any) {
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        setError(messageFor(err, 'Google ile giriş yapılamadı. Lütfen tekrar dene.'));
+        // GECICI TESHIS: bkz. handleAppleSignIn - ayni sebeple gercek hata
+        // kodu/mesaji goruntuye ekleniyor.
+        const debugSuffix = ` [${err?.code ?? 'no-code'}: ${err?.message ?? 'no-message'}]`;
+        setError(messageFor(err, 'Google ile giriş yapılamadı. Lütfen tekrar dene.') + debugSuffix);
       }
     } finally {
       setGoogleLoading(false);

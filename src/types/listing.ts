@@ -33,14 +33,14 @@ export type Listing = {
 };
 
 // Telefon hacim/adet bazinda tek basina en yuksek talep, o yuzden birinci.
-// Arac ve Emlak hemen ardindan geliyor - rakiplerde de boyle: letgo'nun
-// kategori listesinde "Araba" ilk sirada, sahibinden.com'un ana navigasyonu
-// Emlak/Vasita ile baslar. Eskiden bunlari en sona atmistik cunku km/m2 gibi
-// ozel alanlari yoktu; artik tam destekleniyor, geride durmalarinin anlami kalmadi.
+// Arac hemen ardindan geliyor - rakiplerde de boyle: letgo'nun kategori
+// listesinde "Araba" ilk sirada. Emlak ise (EIDS dogrulamasi tamamlanana
+// kadar ilan verilemiyor - bkz. CategoryPickerModal DISABLED_CATEGORIES)
+// bilinçli olarak sona yakin tutuluyor - on planda durup da tiklayinca
+// bos cikmasi kullaniciyi yaniltiyordu.
 export const categories = [
   'Telefon',
   'Araç',
-  'Emlak',
   'Giyim',
   'Ayakkabı & Çanta',
   'Elektronik',
@@ -51,6 +51,7 @@ export const categories = [
   'Spor & Outdoor',
   'Oyun & Konsol',
   'Kitap & Hobi',
+  'Emlak',
   'Diğer',
 ];
 

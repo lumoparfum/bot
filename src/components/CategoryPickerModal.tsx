@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
@@ -159,6 +159,10 @@ export function CategoryPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
           <View style={styles.header}>
@@ -281,12 +285,16 @@ export function CategoryPickerModal({
           </ScrollView>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 function createStyles(colors: ColorPalette) {
   return StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
     backdrop: {
       flex: 1,
       backgroundColor: 'rgba(26, 34, 56, 0.5)',
