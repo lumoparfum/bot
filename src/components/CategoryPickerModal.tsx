@@ -47,6 +47,7 @@ export function CategoryPickerModal({
   const [attrValues, setAttrValues] = useState<Record<string, string>>({});
   const [attrIndex, setAttrIndex] = useState(0);
   const [numberInput, setNumberInput] = useState('');
+  const [textInput, setTextInput] = useState('');
 
   useEffect(() => {
     if (visible) {
@@ -55,6 +56,7 @@ export function CategoryPickerModal({
       setAttrValues(initialAttributes ?? {});
       setAttrIndex(0);
       setNumberInput('');
+      setTextInput('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -90,6 +92,7 @@ export function CategoryPickerModal({
     const nextAttrs = value ? { ...attrValues, [currentAttr.key]: value } : attrValues;
     const nextIndex = attrIndex + 1;
     setNumberInput('');
+    setTextInput('');
     if (nextIndex >= attrDefs.length) {
       finish(category, subcategory, nextAttrs);
     } else {
@@ -110,8 +113,14 @@ export function CategoryPickerModal({
     advanceAttribute(formatted);
   };
 
+  const handleConfirmText = () => {
+    if (!currentAttr || currentAttr.type !== 'text') return;
+    advanceAttribute(textInput.trim() || null);
+  };
+
   const handleBack = () => {
     setNumberInput('');
+    setTextInput('');
     if (subcategory) {
       if (attrIndex === 0) {
         setSubcategory(null);
@@ -221,7 +230,24 @@ export function CategoryPickerModal({
               </View>
             )}
 
-            {category && subcategory && currentAttr && currentAttr.type !== 'number' && (
+            {category && subcategory && currentAttr && currentAttr.type === 'text' && (
+              <View style={styles.numberBlock}>
+                <TextInput
+                  style={styles.numberInput}
+                  value={textInput}
+                  onChangeText={setTextInput}
+                  placeholder={currentAttr.placeholder}
+                  placeholderTextColor={colors.textFaint}
+                  autoFocus
+                />
+                <PrimaryButton label="Devam" onPress={handleConfirmText} />
+                <Pressable style={styles.skipRowCentered} onPress={() => advanceAttribute(null)}>
+                  <Text style={styles.skipText}>Bu adımı geç</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {category && subcategory && currentAttr && (!currentAttr.type || currentAttr.type === 'select') && (
               <>
                 <Pressable style={styles.skipRow} onPress={() => advanceAttribute(null)}>
                   <Text style={styles.skipText}>Bu adımı geç</Text>

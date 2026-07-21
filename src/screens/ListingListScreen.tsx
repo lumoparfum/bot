@@ -95,7 +95,8 @@ export default function ListingListScreen({ navigation }: Props) {
   const attrFilterDefs = useMemo(
     () =>
       getAttributeDefs(selectedCategory === ALL ? null : selectedCategory, selectedSubcategory).filter(
-        (def): def is Extract<AttributeDef, { options: string[] }> => def.type !== 'number'
+        (def): def is Extract<AttributeDef, { options: string[] }> =>
+          def.type !== 'number' && def.type !== 'text'
       ),
     [selectedCategory, selectedSubcategory]
   );
@@ -207,6 +208,8 @@ export default function ListingListScreen({ navigation }: Props) {
       uid: user.uid,
       query: query.trim(),
       category: selectedCategory === ALL ? null : selectedCategory,
+      subcategory: selectedSubcategory,
+      attributes: selectedAttrFilters,
       minPrice: minPrice ? Number(minPrice) : null,
       maxPrice: maxPrice ? Number(maxPrice) : null,
     })

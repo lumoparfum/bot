@@ -20,6 +20,8 @@ function describeSearch(search: SavedSearch): string {
   const parts: string[] = [];
   if (search.query) parts.push(`"${search.query}"`);
   if (search.category) parts.push(search.category);
+  if (search.subcategory) parts.push(search.subcategory);
+  parts.push(...Object.values(search.attributes ?? {}));
   if (search.minPrice != null || search.maxPrice != null) {
     const min = search.minPrice != null ? formatPrice(search.minPrice) : '0₺';
     const max = search.maxPrice != null ? formatPrice(search.maxPrice) : '∞';

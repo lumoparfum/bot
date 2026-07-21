@@ -102,7 +102,8 @@ export const subcategories: Record<string, string[]> = {
 
 // 'select': secilebilir etiketlerden biri secilir. 'number': km/m2/yil gibi
 // serbest sayisal deger - metin girisiyle, "unit" varsa deger kaydedilirken
-// sonuna eklenir (ornegin "85000 km").
+// sonuna eklenir (ornegin "85000 km"). 'text': olcu gibi serbest, kisa metin
+// notu - secilebilir sabit bir liste yok, filtrelenemez (sadece bilgi amacli).
 export type AttributeDef =
   | { key: string; label: string; type?: 'select'; options: string[] }
   | {
@@ -114,7 +115,8 @@ export type AttributeDef =
       // Yil gibi alanlarda binlik ayirac istenmez (2019 -> "2.019" yanlis
       // gorunur), ama km/m2 gibi buyuk miktarlarda okunurlugu artirir.
       formatThousands?: boolean;
-    };
+    }
+  | { key: string; label: string; type: 'text'; placeholder: string };
 
 const RENK_OPTIONS = ['Siyah', 'Beyaz', 'Gri', 'Mavi', 'Kırmızı', 'Yeşil', 'Sarı', 'Pembe', 'Mor', 'Kahverengi', 'Diğer'];
 const GARANTI_OPTIONS = ['Var', 'Yok'];
@@ -155,11 +157,20 @@ export const categoryAttributes: Record<string, AttributeDef[]> = {
     { key: 'Depolama', label: 'Depolama', options: ['128GB', '256GB', '512GB', '1TB+'] },
     { key: 'Garanti', label: 'Garanti', options: GARANTI_OPTIONS },
   ],
+  // Olculer (govde/bel/boy gibi) opsiyonel serbest metin alani - Dolap
+  // sikayetlerinde en cok tekrar eden noktalardan biri "urunlerde olcu bilgisi
+  // eksik" idi, biz bunu ilana dahil ediyoruz.
   Giyim: [
     { key: 'Cinsiyet', label: 'Cinsiyet', options: CINSIYET_OPTIONS },
     { key: 'Marka', label: 'Marka', options: GIYIM_MARKA_OPTIONS },
     { key: 'Beden', label: 'Beden', options: BEDEN_OPTIONS },
     { key: 'Renk', label: 'Renk', options: RENK_OPTIONS },
+    {
+      key: 'Ölçüler',
+      label: 'Ölçüler (opsiyonel)',
+      type: 'text',
+      placeholder: 'Örn. Göğüs 90cm, Bel 74cm, Boy 150cm',
+    },
   ],
   // Numara (ayakkabi bedeni) burada YOK - Sirt Cantasi/Cuzdan gibi alt
   // kategorilerde anlamsiz oldugu icin asagida getAttributeDefs'te sadece

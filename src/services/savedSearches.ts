@@ -23,6 +23,8 @@ function mapSavedSearch(id: string, data: DocumentData): SavedSearch {
     uid: data.uid,
     query: data.query ?? '',
     category: data.category ?? null,
+    subcategory: data.subcategory ?? null,
+    attributes: data.attributes ?? {},
     minPrice: data.minPrice ?? null,
     maxPrice: data.maxPrice ?? null,
     createdAt: toMillis(data.createdAt),
@@ -33,6 +35,8 @@ export async function createSavedSearch(params: {
   uid: string;
   query: string;
   category: string | null;
+  subcategory: string | null;
+  attributes: Record<string, string>;
   minPrice: number | null;
   maxPrice: number | null;
 }): Promise<void> {

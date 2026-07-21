@@ -193,6 +193,13 @@ exports.onNewListingMatchSavedSearches = onDocumentCreated(
         if (!title.includes(q) && !description.includes(q)) return false;
       }
       if (search.category && search.category !== listing.category) return false;
+      if (search.subcategory && search.subcategory !== listing.subcategory) return false;
+      if (search.attributes) {
+        const listingAttrs = listing.attributes || {};
+        for (const key of Object.keys(search.attributes)) {
+          if (listingAttrs[key] !== search.attributes[key]) return false;
+        }
+      }
       if (search.minPrice != null && listing.price < search.minPrice) return false;
       if (search.maxPrice != null && listing.price > search.maxPrice) return false;
       return true;
