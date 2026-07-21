@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import {
   GoogleAuthProvider,
@@ -36,21 +37,42 @@ export async function signInWithGoogle() {
   return signInWithCredential(auth, credential);
 }
 
+const NONCE_CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
+
+function generateNonce(length = 32): string {
+  const bytes = Crypto.getRandomBytes(length);
+  return Array.from(bytes, (byte) => NONCE_CHARSET[byte % NONCE_CHARSET.length]).join('');
+}
+
 // Apple sadece kullanicinin ILK Apple ile girisinde ad bilgisini verir,
 // sonraki girislerde fullName alani hep bos gelir - o yuzden Firebase
 // profiline sadece o ilk seferde, displayName henuz yoksa yaziyoruz.
+//
+// Nonce: Apple'a HASH'lenmis nonce gonderilir, Firebase'e ise HAM (raw)
+// nonce - Firebase kendi tarafinda ayni hash'i uretip Apple'in imzaladigi
+// tokendaki nonce ile eslestirip dogruluyor. Bu adim eksikti; gercek cihazda
+// (TestFlight) Apple ekrani basariyla acilip tamamlaniyor ama Firebase
+// tarafinda "invalid-credential" ile reddediliyordu - nonce olmadan bazi
+// Firebase SDK surumleri Apple credential'ini kabul etmiyor.
 async function signInWithAppleIOS() {
+  const rawNonce = generateNonce();
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
   const credential = await AppleAuthentication.signInAsync({
     requestedScopes: [
       AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
       AppleAuthentication.AppleAuthenticationScope.EMAIL,
     ],
+    nonce: hashedNonce,
   });
   if (!credential.identityToken) {
     throw new Error('Apple girişi tamamlanamadı.');
   }
   const provider = new OAuthProvider('apple.com');
-  const firebaseCredential = provider.credential({ idToken: credential.identityToken });
+  const firebaseCredential = provider.credential({
+    idToken: credential.identityToken,
+    rawNonce,
+  });
   const result = await signInWithCredential(auth, firebaseCredential);
 
   if (!result.user.displayName && credential.fullName?.givenName) {
@@ -78,6 +100,10 @@ async function signInWithAppleAndroid() {
     throw new Error('Apple ile giriş şu anda yapılandırılmıyor, birazdan tekrar dene.');
   }
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  // iOS'taki gibi Firebase'in nonce dogrulamasini gecmek icin hash'lenmis
+  // nonce Apple'a, ham nonce da asagida Firebase credential'ina veriliyor.
+  const rawNonce = generateNonce();
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
   const authUrl =
     'https://appleid.apple.com/auth/authorize?' +
     new URLSearchParams({
@@ -87,6 +113,7 @@ async function signInWithAppleAndroid() {
       response_mode: 'form_post',
       scope: 'name email',
       state,
+      nonce: hashedNonce,
     }).toString();
 
   const result = await WebBrowser.openAuthSessionAsync(authUrl, APP_AUTH_REDIRECT);
@@ -109,7 +136,7 @@ async function signInWithAppleAndroid() {
   }
 
   const provider = new OAuthProvider('apple.com');
-  const firebaseCredential = provider.credential({ idToken });
+  const firebaseCredential = provider.credential({ idToken, rawNonce });
   const signInResult = await signInWithCredential(auth, firebaseCredential);
 
   const userField = params.get('user');
