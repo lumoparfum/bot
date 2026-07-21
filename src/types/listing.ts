@@ -57,7 +57,7 @@ export const categories = [
 ];
 
 // Her ana kategorinin alt kategorileri - "Diger" secenegi her listenin
-// sonunda genel bir kacis kapisi olarak duruyor. Giyim ve Ayakkabi & Canta,
+// sonunda genel bir kacis kapisi olarak duruyor. Giyim, Ayakkabi ve Canta,
 // sahibinden.com ve Dolap'in gercek kategori agaclari incelenerek urun
 // TIPINE gore ayrildi (cinsiyet burada degil, asagida bir ozellik/attribute
 // olarak soruluyor - ikisi de rakiplerde boyle).
@@ -117,8 +117,8 @@ const BEDEN_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Diğer'];
 const NUMARA_OPTIONS = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 const CINSIYET_OPTIONS = ['Kadın', 'Erkek', 'Çocuk', 'Unisex'];
 // Dolap'in resmi ilan kurallari Marka'yi "cekirdek" alanlardan biri olarak
-// listeliyor (arama/siralama algoritmasi bunu kullaniyor) - biz de Giyim ve
-// Ayakkabi & Canta'da ayni sekilde ekliyoruz. Dolap'taki gibi zorunlu ve
+// listeliyor (arama/siralama algoritmasi bunu kullaniyor) - biz de Giyim,
+// Ayakkabi ve Canta'da ayni sekilde ekliyoruz. Dolap'taki gibi zorunlu ve
 // eslesmezse ilan silen bir kontrol degil - "Diger" her zaman kaçış kapisi,
 // kullaniciyi hic cezalandirmiyoruz.
 const GIYIM_MARKA_OPTIONS = [
