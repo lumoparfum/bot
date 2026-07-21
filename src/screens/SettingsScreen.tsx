@@ -17,7 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { showAlert } from '../components/AppAlert';
 import { BusinessRequestModal } from '../components/BusinessRequestModal';
 import { IconButton } from '../components/IconButton';
-import { ACCENT_LABELS, ACCENT_SWATCHES, radius, spacing, typography, type AccentKey, type ColorPalette } from '../constants/theme';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme, type ThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { deleteAccount } from '../services/account';
@@ -37,16 +37,17 @@ import type { ProfileStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Settings'>;
 
+// "Orkide" digerlerinden farkli, TAM bagimsiz bir tema (sadece vurgu rengi
+// degil) - rakiplerde olmayan, sicak/yumusak bir renk uyumuyla tasarlandi.
 const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { mode: 'system', label: 'Sistem', icon: 'phone-portrait-outline' },
   { mode: 'light', label: 'Açık', icon: 'sunny-outline' },
   { mode: 'dark', label: 'Koyu', icon: 'moon-outline' },
+  { mode: 'orkide', label: 'Orkide', icon: 'flower-outline' },
 ];
 
-const ACCENT_OPTIONS: AccentKey[] = ['orange', 'rose', 'gold'];
-
 export default function SettingsScreen({ navigation }: Props) {
-  const { colors, mode, setMode, accent, setAccent } = useTheme();
+  const { colors, mode, setMode } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { signOut, user, refreshUser } = useAuth();
@@ -253,23 +254,6 @@ export default function SettingsScreen({ navigation }: Props) {
               <Ionicons name={option.icon} size={20} color={colors.textMuted} />
               <Text style={styles.rowLabel}>{option.label}</Text>
               {mode === option.mode && (
-                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-              )}
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>Vurgu Rengi</Text>
-        <View style={styles.card}>
-          {ACCENT_OPTIONS.map((option, index) => (
-            <Pressable
-              key={option}
-              style={[styles.row, index < ACCENT_OPTIONS.length - 1 && styles.rowDivider]}
-              onPress={() => setAccent(option)}
-            >
-              <View style={[styles.accentSwatch, { backgroundColor: ACCENT_SWATCHES[option] }]} />
-              <Text style={styles.rowLabel}>{ACCENT_LABELS[option]}</Text>
-              {accent === option && (
                 <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
               )}
             </Pressable>
@@ -536,11 +520,6 @@ function createStyles(colors: ColorPalette) {
       ...typography.body,
       color: colors.text,
       flex: 1,
-    },
-    accentSwatch: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
     },
     nameInput: {
       ...typography.body,

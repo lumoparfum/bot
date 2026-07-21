@@ -28,49 +28,36 @@ export const lightColors = {
   warning: '#F5A623',
 };
 
-// Vurgu rengi (accent) - kullanicinin Ayarlar'dan secebilecegi tercih.
-// BrandMark/Wordmark BILEREK lightColors.primary'yi sabit kullaniyor (marka
-// rengi turuncu kalsin diye) - bu yuzden lightColors/darkColors'in kendisini
-// degistirmek yerine applyAccent ile SADECE useTheme() uzerinden gelen
-// colors objesinde primary/primaryDark/primaryLight'i degistiriyoruz.
-export type AccentKey = 'orange' | 'rose' | 'gold';
+// "Orkide" - Sistem/Acik/Koyu'nun yaninda dorduncu, TAM bir tema (sadece bir
+// vurgu rengi degil, arka plan/yuzey/metin dahil her sey degisiyor). Rakip
+// uygulamalarda boyle bir secenek yok, bilinçli olarak sicak, yumusak bir
+// gul/orkide renk uyumuyla tasarlandi - kimseye kilitli degil, herkes
+// secebilir, sadece rengi bunu tercih edenlere hitap etsin diye dusunuldu.
+export const orkideColors: ColorPalette = {
+  primary: '#C9457E',
+  primaryDark: '#A13166',
+  primaryLight: '#FBDCE9',
 
-export const ACCENT_LABELS: Record<AccentKey, string> = {
-  orange: 'Turuncu',
-  rose: 'Gül',
-  gold: 'Altın',
+  navy: '#4A2545',
+  navyLight: '#6B3B63',
+
+  background: '#FFF7F9',
+  surface: '#FDEEF2',
+  surfaceAlt: '#FBE4EC',
+
+  border: '#F3D9E3',
+  divider: '#F6E2EA',
+
+  text: '#3A2233',
+  textMuted: '#8A6478',
+  textFaint: '#B892A6',
+  textOnPrimary: '#FFFFFF',
+  textOnNavy: '#FFFFFF',
+
+  success: '#2FA968',
+  error: '#E23F5C',
+  warning: '#E8A23D',
 };
-
-// Secim noktasinda kucuk bir renk topu gostermek icin - her zaman "acik"
-// (light mode) tondaki primary kullanilir, tema koyu/acik farketmeksizin
-// ayni renk noktasi tutarli gorunsun diye.
-export const ACCENT_SWATCHES: Record<AccentKey, string> = {
-  orange: '#FF6B35',
-  rose: '#E8547A',
-  gold: '#C9932E',
-};
-
-type AccentOverride = { primary: string; primaryDark: string; primaryLight: string };
-
-const ACCENT_OVERRIDES: Record<AccentKey, { light: AccentOverride; dark: AccentOverride }> = {
-  orange: {
-    light: { primary: '#FF6B35', primaryDark: '#E24E17', primaryLight: '#FFE4D6' },
-    dark: { primary: '#FF7A47', primaryDark: '#FF6B35', primaryLight: '#3A2418' },
-  },
-  rose: {
-    light: { primary: '#E8547A', primaryDark: '#C93862', primaryLight: '#FBDCE0' },
-    dark: { primary: '#F2708F', primaryDark: '#E8547A', primaryLight: '#3A1F28' },
-  },
-  gold: {
-    light: { primary: '#C9932E', primaryDark: '#A6741C', primaryLight: '#F7E8C9' },
-    dark: { primary: '#D9A94A', primaryDark: '#C9932E', primaryLight: '#332A16' },
-  },
-};
-
-export function applyAccent(base: ColorPalette, isDark: boolean, accent: AccentKey): ColorPalette {
-  if (accent === 'orange') return base;
-  return { ...base, ...ACCENT_OVERRIDES[accent][isDark ? 'dark' : 'light'] };
-}
 
 export const darkColors: ColorPalette = {
   primary: '#FF7A47',
