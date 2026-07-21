@@ -64,6 +64,20 @@ export function CategoryPickerModal({
   const attrDefs = getEffectiveAttributeDefs(category, subcategory, attrValues);
   const currentAttr = attrDefs[attrIndex];
 
+  // Geri gidip bir number/text adimina tekrar gelince kutu bombos
+  // kaliyordu (deger attrValues'ta duruyor ama input state'i sifirlanmisti) -
+  // adim degisince onceden girilmis degeri (varsa) kutuya geri yaziyoruz.
+  useEffect(() => {
+    if (!currentAttr) return;
+    if (currentAttr.type === 'number') {
+      const stored = attrValues[currentAttr.key];
+      setNumberInput(stored ? stored.replace(/[^0-9]/g, '') : '');
+    } else if (currentAttr.type === 'text') {
+      setTextInput(attrValues[currentAttr.key] ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attrIndex, subcategory, category]);
+
   // Kategori/alt kategori parametre olarak geciriliyor - setSubcategory
   // sonrasi ayni event icinde state'ten okumaya calismak eski (henuz
   // guncellenmemis) degeri doner, bu da ozelligi olmayan kategorilerde
