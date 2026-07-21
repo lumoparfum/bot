@@ -55,7 +55,11 @@ export default function AuthScreen({ navigation }: Props) {
       // Kullanici kendi vazgecip iptal ederse (ERR_REQUEST_CANCELED) sessizce
       // cik - bu bir hata degil, kullanicinin kendi tercihi.
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        setError(messageFor(err, 'Apple ile giriş yapılamadı. Lütfen tekrar dene.'));
+        // GECICI TESHIS: gercek hata kodu/mesaji goruntuye ekleniyor - Apple
+        // girisindeki gizemli hatanin gercek sebebini gormek icin. Sebep
+        // bulununca bu satir kaldirilacak.
+        const debugSuffix = ` [${err?.code ?? 'no-code'}: ${err?.message ?? 'no-message'}]`;
+        setError(messageFor(err, 'Apple ile giriş yapılamadı. Lütfen tekrar dene.') + debugSuffix);
       }
     } finally {
       setAppleLoading(false);
