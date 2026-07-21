@@ -14,6 +14,9 @@ import { auth } from './firebase';
 
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  // iosClientId olmadan iOS'ta native Google girisi baslatilamiyordu -
+  // Firebase projesine iOS uygulamasi eklenene kadar bu deger hic yoktu.
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
 });
 
 export async function signInWithGoogle() {
