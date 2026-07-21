@@ -38,10 +38,7 @@ export default function AuthScreen({ navigation }: Props) {
       if (navigation.canGoBack()) navigation.goBack();
     } catch (err: any) {
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        // GECICI TESHIS: bkz. handleAppleSignIn - ayni sebeple gercek hata
-        // kodu/mesaji goruntuye ekleniyor.
-        const debugSuffix = ` [${err?.code ?? 'no-code'}: ${err?.message ?? 'no-message'}]`;
-        setError(messageFor(err, 'Google ile giriş yapılamadı. Lütfen tekrar dene.') + debugSuffix);
+        setError(messageFor(err, 'Google ile giriş yapılamadı. Lütfen tekrar dene.'));
       }
     } finally {
       setGoogleLoading(false);
@@ -58,11 +55,7 @@ export default function AuthScreen({ navigation }: Props) {
       // Kullanici kendi vazgecip iptal ederse (ERR_REQUEST_CANCELED) sessizce
       // cik - bu bir hata degil, kullanicinin kendi tercihi.
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        // GECICI TESHIS: gercek hata kodu/mesaji goruntuye ekleniyor - Apple
-        // girisindeki gizemli hatanin gercek sebebini gormek icin. Sebep
-        // bulununca bu satir kaldirilacak.
-        const debugSuffix = ` [${err?.code ?? 'no-code'}: ${err?.message ?? 'no-message'}]`;
-        setError(messageFor(err, 'Apple ile giriş yapılamadı. Lütfen tekrar dene.') + debugSuffix);
+        setError(messageFor(err, 'Apple ile giriş yapılamadı. Lütfen tekrar dene.'));
       }
     } finally {
       setAppleLoading(false);
