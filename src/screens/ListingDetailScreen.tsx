@@ -653,7 +653,11 @@ function createStyles(colors: ColorPalette) {
       bottom: 0,
       backgroundColor: colors.background,
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
+      // Alt guvenli alan (insets.bottom) telefona gore 0-40px arasi
+      // degisiyor - ustteki bosluk sabit kalirsa buton bara "yapisik"
+      // gorunup dengesiz duruyordu. Ust bosluk biraz artirilip buton
+      // barin icinde daha dengeli konumlaniyor.
+      paddingTop: spacing.md,
       borderTopWidth: 1,
       borderTopColor: colors.divider,
       ...shadows.raised,

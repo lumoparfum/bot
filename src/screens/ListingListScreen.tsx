@@ -229,15 +229,32 @@ export default function ListingListScreen({ navigation }: Props) {
     loadListings();
   };
 
+  // LocationPickerModal, Filtrele sayfasinin (Modal) icinden aciliyor - iki
+  // native Modal'i AYNI ANDA acik tutmak iOS'ta dokunma olaylarinin
+  // (touch responder chain) bozulmasina yol aciyordu: ic modal kapaninca
+  // arkadaki ekran tamamen tiklanamaz hale geliyordu. Bu yuzden Filtrele'yi
+  // once kapatip konum secici acildikta, o kapaninca Filtrele'yi geri aciyoruz -
+  // iki modal hicbir zaman ayni anda gorunmuyor.
   const handleRadiusPress = (km: number | null) => {
     setSelectedRadius(km);
     if (km !== null) {
       if (!userLocation) {
+        setFilterModalVisible(false);
         setPickerVisible(true);
         return;
       }
       setLocationFilterActive(true);
     }
+  };
+
+  const handleOpenLocationPicker = () => {
+    setFilterModalVisible(false);
+    setPickerVisible(true);
+  };
+
+  const handleLocationPickerClose = () => {
+    setPickerVisible(false);
+    setFilterModalVisible(true);
   };
 
   const handleLocationSelect = (location: ListingLocation) => {
@@ -504,7 +521,7 @@ export default function ListingListScreen({ navigation }: Props) {
 
       <LocationPickerModal
         visible={pickerVisible}
-        onClose={() => setPickerVisible(false)}
+        onClose={handleLocationPickerClose}
         onSelect={handleLocationSelect}
       />
 
@@ -542,7 +559,7 @@ export default function ListingListScreen({ navigation }: Props) {
               <Text style={styles.filterSectionLabel}>Konum</Text>
               <Pressable
                 style={[styles.locationRow, locationFilterActive && styles.locationRowActive]}
-                onPress={() => setPickerVisible(true)}
+                onPress={handleOpenLocationPicker}
               >
                 <Ionicons
                   name="location-outline"
