@@ -481,6 +481,28 @@ export default function ListingListScreen({ navigation }: Props) {
               ))}
             </ScrollView>
 
+            {selectedCategory === ALL && (
+              <View style={styles.categoryGridSection}>
+                <Text style={styles.categoryGridTitle}>Kategorilere Göz At</Text>
+                <View style={styles.categoryGrid}>
+                  {categories.map((item) => (
+                    <Pressable
+                      key={item}
+                      style={styles.categoryTile}
+                      onPress={() => handleSelectCategory(item)}
+                    >
+                      <View style={styles.categoryTileIcon}>
+                        <Ionicons name={categoryIcons[item]} size={22} color={colors.primary} />
+                      </View>
+                      <Text style={styles.categoryTileLabel} numberOfLines={1}>
+                        {item}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {selectedCategory !== ALL && subcategories[selectedCategory] && (
               <ScrollView
                 horizontal
@@ -840,6 +862,38 @@ function createStyles(colors: ColorPalette) {
     subChipRow: {
       gap: spacing.sm,
       paddingBottom: spacing.sm,
+    },
+    categoryGridSection: {
+      marginBottom: spacing.md,
+    },
+    categoryGridTitle: {
+      ...typography.footnote,
+      fontWeight: '700',
+      color: colors.textMuted,
+      marginBottom: spacing.sm,
+    },
+    categoryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    categoryTile: {
+      width: '21%',
+      alignItems: 'center',
+      gap: 6,
+    },
+    categoryTileIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: radius.lg,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categoryTileLabel: {
+      ...typography.caption,
+      color: colors.text,
+      textAlign: 'center',
     },
     locationRow: {
       flexDirection: 'row',
