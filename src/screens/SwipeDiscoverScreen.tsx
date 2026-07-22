@@ -84,23 +84,31 @@ export default function SwipeDiscoverScreen({ navigation }: Props) {
     swipeOffScreen('left');
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 4,
-      onPanResponderMove: (_, gesture) => {
-        position.setValue({ x: gesture.dx, y: gesture.dy });
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
-          handleLike();
-        } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          handleSkip();
-        } else {
-          resetPosition();
-        }
-      },
-    })
-  ).current;
+  // NOT: useRef(...).current ile DONDURULMEMELI - o zaman ilk render'daki
+  // (listings henuz bos, current=undefined) handleLike/handleSkip closure'lari
+  // sonsuza kadar kullanilir ve her swipe "current yok" diye sessizce no-op
+  // olurdu (kart parmagi takip eder ama biraktiginda hicbir sey olmazdi).
+  // Her render'da guncel current/index'i gorecek sekilde yeniden olusturuluyor.
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 4,
+        onPanResponderMove: (_, gesture) => {
+          position.setValue({ x: gesture.dx, y: gesture.dy });
+        },
+        onPanResponderRelease: (_, gesture) => {
+          if (gesture.dx > SWIPE_THRESHOLD) {
+            handleLike();
+          } else if (gesture.dx < -SWIPE_THRESHOLD) {
+            handleSkip();
+          } else {
+            resetPosition();
+          }
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [current]
+  );
 
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],

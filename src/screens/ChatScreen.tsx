@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -60,11 +61,25 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [sending, setSending] = useState(false);
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [counterOfferTarget, setCounterOfferTarget] = useState<ChatMessage | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(conversationId, setMessages);
     return unsubscribe;
   }, [conversationId]);
+
+  // Alt bosluk (insets.bottom) sadece klavye kapaliyken home indicator'i
+  // temizlemek icin gerekli - klavye acikken KeyboardAvoidingView zaten her
+  // seyi yukari itiyor, bu sabit padding orada gereksiz bosluk birakip mesaj
+  // kutusunun klavyeden "kopuk" durmasina (dengesizlik) yol aciyordu.
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -283,7 +298,12 @@ export default function ChatScreen({ route, navigation }: Props) {
           ))}
         </ScrollView>
 
-        <View style={[styles.inputRow, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View
+          style={[
+            styles.inputRow,
+            { paddingBottom: keyboardVisible ? spacing.sm : insets.bottom + spacing.sm },
+          ]}
+        >
           <Pressable style={styles.offerButton} onPress={() => setOfferModalVisible(true)} hitSlop={6}>
             <Ionicons name="pricetag-outline" size={19} color={colors.primary} />
           </Pressable>
