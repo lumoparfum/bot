@@ -91,7 +91,7 @@ export async function createListing(input: NewListingInput): Promise<string> {
   return newDocRef.id;
 }
 
-export const DAILY_LISTING_LIMIT = 3;
+export const DAILY_LISTING_LIMIT = 10;
 
 export type ListingCreationCheck = { allowed: boolean; reason: 'daily_limit' | 'duplicate' | null };
 
