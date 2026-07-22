@@ -952,12 +952,6 @@ body::before {
     border-radius: 13px;
   }
 
-  .floating-card {
-    padding: 9px 11px;
-    font-size: 11px;
-    gap: 6px;
-  }
-
   .hero h1 {
     font-size: 36px;
   }
@@ -999,6 +993,5 @@ body::before {
   .section-head h2 { font-size: 26px; }
   .phone-frame { width: 172px; height: 330px; padding: 7px; border-radius: 26px; }
   .phone-frame .screen { border-radius: 11px; }
-  .floating-card { padding: 7px 9px; font-size: 10px; gap: 5px; }
   .download-band h2 { font-size: 22px; }
 }
