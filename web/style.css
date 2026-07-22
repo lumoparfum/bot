@@ -293,7 +293,7 @@ a {
 }
 
 .phone-frame {
-  width: 221px;
+  width: 260px;
   height: 540px;
   border-radius: 40px;
   background: var(--navy);
@@ -941,7 +941,7 @@ body::before {
   }
 
   .phone-frame {
-    width: 170px;
+    width: 200px;
     height: 416px;
     padding: 9px;
     border-radius: 30px;
@@ -991,7 +991,7 @@ body::before {
   .store-badge { min-width: 0; flex: 1 1 calc(50% - 6px); }
   .category-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .section-head h2 { font-size: 26px; }
-  .phone-frame { width: 146px; height: 358px; padding: 7px; border-radius: 26px; }
+  .phone-frame { width: 172px; height: 358px; padding: 7px; border-radius: 26px; }
   .phone-frame .screen { border-radius: 19px; }
   .download-band h2 { font-size: 22px; }
 }
