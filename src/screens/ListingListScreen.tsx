@@ -16,7 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { showAlert } from '../components/AppAlert';
+import { showAlert, type AppAlertButton } from '../components/AppAlert';
 import { Wordmark } from '../components/Wordmark';
 import { CategoryChip } from '../components/CategoryChip';
 import { IconButton } from '../components/IconButton';
@@ -124,13 +124,37 @@ export default function ListingListScreen({ navigation }: Props) {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const sortActive = sortOption !== 'newest';
   const hasActiveFilters =
-    sortOption !== 'newest' ||
     minPrice !== '' ||
     maxPrice !== '' ||
     locationFilterActive ||
     selectedCondition !== null ||
     Object.keys(selectedAttrFilters).length > 0;
+
+  // Filtrele sayfasi kalabalik gelmesin diye butun bolumler kapali baslar,
+  // kullanici hangisiyle ilgileniyorsa ona dokunup acar. Ayni anda birden
+  // fazla bolum acik kalabilir - "tek acik" kisitlamasi gereksiz surtunme.
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleOpenSortMenu = () => {
+    const options: AppAlertButton[] = (Object.keys(SORT_LABELS) as SortOption[])
+      .filter((option) => option !== 'distance' || userLocation)
+      .map((option) => ({
+        text: sortOption === option ? `✓ ${SORT_LABELS[option]}` : SORT_LABELS[option],
+        onPress: () => setSortOption(option),
+      }));
+    options.push({ text: 'Vazgeç', style: 'cancel' });
+    showAlert('Sırala', undefined, options);
+  };
 
   // Dolap gibi rakiplerde de var: asagi kaydirinca alt sekme cubugu
   // kayboluyor, yukari kaydirinca (ya da en tepeye donunce) geri geliyor -
@@ -414,6 +438,10 @@ export default function ListingListScreen({ navigation }: Props) {
                 >
                   <Ionicons name="layers-outline" size={20} color={colors.text} />
                 </IconButton>
+                <IconButton onPress={handleOpenSortMenu} accessibilityLabel="Sırala">
+                  <Ionicons name="swap-vertical-outline" size={20} color={colors.text} />
+                  {sortActive && <View style={styles.activeDot} />}
+                </IconButton>
                 <IconButton onPress={() => setFilterModalVisible(true)} accessibilityLabel="Filtrele">
                   <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}
@@ -536,7 +564,7 @@ export default function ListingListScreen({ navigation }: Props) {
         >
           <View style={[styles.filterSheet, { paddingBottom: spacing.xl + insets.bottom }]}>
             <View style={styles.filterHeader}>
-              <Text style={styles.filterTitle}>Filtrele & Sırala</Text>
+              <Text style={styles.filterTitle}>Filtrele</Text>
               <Pressable onPress={() => setFilterModalVisible(false)} hitSlop={8}>
                 <Ionicons name="close" size={22} color={colors.textMuted} />
               </Pressable>
@@ -555,118 +583,164 @@ export default function ListingListScreen({ navigation }: Props) {
             </Pressable>
 
             <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={styles.filterSectionLabel}>Konum</Text>
-              <Pressable
-                style={[styles.locationRow, locationFilterActive && styles.locationRowActive]}
-                onPress={handleOpenLocationPicker}
-              >
-                <Ionicons
-                  name="location-outline"
-                  size={18}
-                  color={locationFilterActive ? colors.primary : colors.textMuted}
-                />
-                <Text
-                  style={[styles.locationRowText, !locationLabel && styles.locationRowPlaceholder]}
-                  numberOfLines={1}
-                >
-                  {locationLabel ?? 'Konum seç (GPS veya şehir)'}
-                </Text>
-                {locationFilterActive ? (
-                  <Pressable onPress={handleClearLocation} hitSlop={8}>
-                    <Ionicons name="close-circle" size={18} color={colors.textFaint} />
-                  </Pressable>
-                ) : (
-                  <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+              <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection('location')}>
+                <Text style={styles.filterSectionHeaderLabel}>Konum</Text>
+                {locationFilterActive && !expandedSections.has('location') && (
+                  <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                    {locationLabel}
+                    {selectedRadius !== null ? ` · ${selectedRadius} km` : ''}
+                  </Text>
                 )}
+                <Ionicons
+                  name={expandedSections.has('location') ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textFaint}
+                />
               </Pressable>
-              <Text style={styles.locationHint}>
-                {locationFilterActive
-                  ? selectedRadius !== null
-                    ? `${selectedRadius} km yarıçapındaki ilanlar gösteriliyor`
-                    : 'Sadece bu şehirdeki ilanlar gösteriliyor'
-                  : 'Bir şehir seçip filtreleyebilir, istersen km ile daraltabilirsin'}
-              </Text>
-              <View style={[styles.sortOptions, styles.radiusOptions]}>
-                <CategoryChip
-                  label={ALL}
-                  selected={selectedRadius === null}
-                  onPress={() => handleRadiusPress(null)}
-                />
-                {DISTANCE_FILTERS.map((km) => (
-                  <CategoryChip
-                    key={km}
-                    label={`${km} km`}
-                    selected={selectedRadius === km}
-                    onPress={() => handleRadiusPress(km)}
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.filterSectionLabel}>Sıralama</Text>
-              <View style={styles.sortOptions}>
-                {(Object.keys(SORT_LABELS) as SortOption[])
-                  .filter((option) => option !== 'distance' || userLocation)
-                  .map((option) => (
-                    <CategoryChip
-                      key={option}
-                      label={SORT_LABELS[option]}
-                      selected={sortOption === option}
-                      onPress={() => setSortOption(option)}
+              {expandedSections.has('location') && (
+                <View style={styles.filterSectionBody}>
+                  <Pressable
+                    style={[styles.locationRow, locationFilterActive && styles.locationRowActive]}
+                    onPress={handleOpenLocationPicker}
+                  >
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={locationFilterActive ? colors.primary : colors.textMuted}
                     />
-                  ))}
-              </View>
-
-              <Text style={styles.filterSectionLabel}>Fiyat Aralığı</Text>
-              <View style={styles.priceRangeRow}>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Min ₺"
-                  placeholderTextColor={colors.textFaint}
-                  keyboardType="number-pad"
-                  value={formatNumberInput(minPrice)}
-                  onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
-                />
-                <Text style={styles.priceRangeDash}>—</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="Max ₺"
-                  placeholderTextColor={colors.textFaint}
-                  keyboardType="number-pad"
-                  value={formatNumberInput(maxPrice)}
-                  onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
-                />
-              </View>
-
-              <Text style={styles.filterSectionLabel}>Durum</Text>
-              <View style={styles.sortOptions}>
-                <CategoryChip
-                  label={ALL}
-                  selected={selectedCondition === null}
-                  onPress={() => setSelectedCondition(null)}
-                />
-                {conditions.map((item) => (
-                  <CategoryChip
-                    key={item}
-                    label={item}
-                    selected={selectedCondition === item}
-                    onPress={() => setSelectedCondition(item)}
-                  />
-                ))}
-              </View>
-
-              {attrFilterDefs.map((def) => (
-                <View key={def.key}>
-                  <Text style={styles.filterSectionLabel}>{def.label}</Text>
-                  <View style={styles.sortOptions}>
-                    {def.options.map((option) => (
+                    <Text
+                      style={[styles.locationRowText, !locationLabel && styles.locationRowPlaceholder]}
+                      numberOfLines={1}
+                    >
+                      {locationLabel ?? 'Konum seç (GPS veya şehir)'}
+                    </Text>
+                    {locationFilterActive ? (
+                      <Pressable onPress={handleClearLocation} hitSlop={8}>
+                        <Ionicons name="close-circle" size={18} color={colors.textFaint} />
+                      </Pressable>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+                    )}
+                  </Pressable>
+                  <Text style={styles.locationHint}>
+                    {locationFilterActive
+                      ? selectedRadius !== null
+                        ? `${selectedRadius} km yarıçapındaki ilanlar gösteriliyor`
+                        : 'Sadece bu şehirdeki ilanlar gösteriliyor'
+                      : 'Bir şehir seçip filtreleyebilir, istersen km ile daraltabilirsin'}
+                  </Text>
+                  <View style={[styles.sortOptions, styles.radiusOptions]}>
+                    <CategoryChip
+                      label={ALL}
+                      selected={selectedRadius === null}
+                      onPress={() => handleRadiusPress(null)}
+                    />
+                    {DISTANCE_FILTERS.map((km) => (
                       <CategoryChip
-                        key={option}
-                        label={option}
-                        selected={selectedAttrFilters[def.key] === option}
-                        onPress={() => handleToggleAttrFilter(def.key, option)}
+                        key={km}
+                        label={`${km} km`}
+                        selected={selectedRadius === km}
+                        onPress={() => handleRadiusPress(km)}
                       />
                     ))}
                   </View>
+                </View>
+              )}
+
+              <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection('price')}>
+                <Text style={styles.filterSectionHeaderLabel}>Fiyat Aralığı</Text>
+                {(minPrice !== '' || maxPrice !== '') && !expandedSections.has('price') && (
+                  <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                    {minPrice ? `${formatNumberInput(minPrice)}₺` : '0₺'} –{' '}
+                    {maxPrice ? `${formatNumberInput(maxPrice)}₺` : '∞'}
+                  </Text>
+                )}
+                <Ionicons
+                  name={expandedSections.has('price') ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textFaint}
+                />
+              </Pressable>
+              {expandedSections.has('price') && (
+                <View style={[styles.filterSectionBody, styles.priceRangeRow]}>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="Min ₺"
+                    placeholderTextColor={colors.textFaint}
+                    keyboardType="number-pad"
+                    value={formatNumberInput(minPrice)}
+                    onChangeText={(text) => setMinPrice(text.replace(/[^0-9]/g, ''))}
+                  />
+                  <Text style={styles.priceRangeDash}>—</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="Max ₺"
+                    placeholderTextColor={colors.textFaint}
+                    keyboardType="number-pad"
+                    value={formatNumberInput(maxPrice)}
+                    onChangeText={(text) => setMaxPrice(text.replace(/[^0-9]/g, ''))}
+                  />
+                </View>
+              )}
+
+              <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection('condition')}>
+                <Text style={styles.filterSectionHeaderLabel}>Durum</Text>
+                {selectedCondition && !expandedSections.has('condition') && (
+                  <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                    {selectedCondition}
+                  </Text>
+                )}
+                <Ionicons
+                  name={expandedSections.has('condition') ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textFaint}
+                />
+              </Pressable>
+              {expandedSections.has('condition') && (
+                <View style={[styles.filterSectionBody, styles.sortOptions]}>
+                  <CategoryChip
+                    label={ALL}
+                    selected={selectedCondition === null}
+                    onPress={() => setSelectedCondition(null)}
+                  />
+                  {conditions.map((item) => (
+                    <CategoryChip
+                      key={item}
+                      label={item}
+                      selected={selectedCondition === item}
+                      onPress={() => setSelectedCondition(item)}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {attrFilterDefs.map((def) => (
+                <View key={def.key}>
+                  <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection(def.key)}>
+                    <Text style={styles.filterSectionHeaderLabel}>{def.label}</Text>
+                    {selectedAttrFilters[def.key] && !expandedSections.has(def.key) && (
+                      <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                        {selectedAttrFilters[def.key]}
+                      </Text>
+                    )}
+                    <Ionicons
+                      name={expandedSections.has(def.key) ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={colors.textFaint}
+                    />
+                  </Pressable>
+                  {expandedSections.has(def.key) && (
+                    <View style={[styles.filterSectionBody, styles.sortOptions]}>
+                      {def.options.map((option) => (
+                        <CategoryChip
+                          key={option}
+                          label={option}
+                          selected={selectedAttrFilters[def.key] === option}
+                          onPress={() => handleToggleAttrFilter(def.key, option)}
+                        />
+                      ))}
+                    </View>
+                  )}
                 </View>
               ))}
             </ScrollView>
@@ -838,12 +912,28 @@ function createStyles(colors: ColorPalette) {
       color: colors.primaryDark,
       flex: 1,
     },
-    filterSectionLabel: {
-      ...typography.footnote,
+    filterSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+    },
+    filterSectionHeaderLabel: {
+      ...typography.subhead,
       fontWeight: '600',
-      color: colors.textMuted,
-      marginTop: spacing.md,
-      marginBottom: spacing.sm,
+      color: colors.text,
+    },
+    filterSectionSummary: {
+      ...typography.footnote,
+      color: colors.primary,
+      flex: 1,
+      textAlign: 'right',
+      marginHorizontal: spacing.sm,
+    },
+    filterSectionBody: {
+      paddingBottom: spacing.md,
     },
     sortOptions: {
       flexDirection: 'row',
