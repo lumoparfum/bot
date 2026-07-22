@@ -22,6 +22,7 @@ import { GuestPrompt } from '../components/GuestPrompt';
 import { LocationPickerModal } from '../components/LocationPickerModal';
 import { PrefixInput } from '../components/PrefixInput';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { findProhibitedWord } from '../constants/prohibitedWords';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { conditions, type ListingCondition, type ListingLocation } from '../types/listing';
@@ -217,6 +218,13 @@ export default function AddListingScreen({ navigation, route }: Props) {
     }
     if (!user) {
       showAlert('Giriş gerekli', 'İlan vermek için giriş yapmış olman gerekiyor.');
+      return;
+    }
+    if (findProhibitedWord(title) || findProhibitedWord(description)) {
+      showAlert(
+        'Uygunsuz içerik',
+        'Başlık veya açıklamada uygunsuz bir kelime tespit edildi. Lütfen düzenleyip tekrar dene.'
+      );
       return;
     }
     setSubmitting(true);

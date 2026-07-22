@@ -196,7 +196,6 @@ export default function ChatScreen({ route, navigation }: Props) {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={insets.top}
       >
         <FlatList
           data={[...messages].reverse()}

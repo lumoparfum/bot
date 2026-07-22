@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
-  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -10,7 +9,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -47,13 +45,6 @@ import {
   type Coordinates,
 } from '../utils/location';
 import type { HomeStackParamList } from '../types/navigation';
-
-// Eski (Fabric-oncesi) Android koprusunde LayoutAnimation varsayilan kapali -
-// alt bar'in kaydirinca yumusakca kaybolup gorunmesi bu bayrak olmadan
-// calismiyor.
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const ALL = 'Tümü';
 
@@ -155,16 +146,18 @@ export default function ListingListScreen({ navigation }: Props) {
     const parent = navigation.getParent();
 
     if (parent) {
+      // NOT: LayoutAnimation buraya kasten eklenmiyor - kullanicinin parmagi
+      // hala ekranda, aktif surukleme sirasinda (FlatList kaydirirken) alt
+      // barin gizlenmesiyle olusan boyut degisikligini animasyonlu yapmak
+      // listenin kendi kaydirmasiyla catisiyor, "kaydirma takiliyor/zipliyor"
+      // hissi veriyordu. Ani (animasyonsuz) degisim bu catismayi ortadan kaldiriyor.
       if (currentY <= 0 && tabBarHidden.current) {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         parent.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
         tabBarHidden.current = false;
       } else if (delta > SCROLL_HIDE_THRESHOLD && !tabBarHidden.current) {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         parent.setOptions({ tabBarStyle: { display: 'none' } });
         tabBarHidden.current = true;
       } else if (delta < -SCROLL_HIDE_THRESHOLD && tabBarHidden.current) {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         parent.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
         tabBarHidden.current = false;
       }
