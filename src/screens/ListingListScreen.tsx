@@ -16,7 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { showAlert, type AppAlertButton } from '../components/AppAlert';
+import { showAlert } from '../components/AppAlert';
 import { Wordmark } from '../components/Wordmark';
 import { CategoryChip } from '../components/CategoryChip';
 import { IconButton } from '../components/IconButton';
@@ -124,8 +124,8 @@ export default function ListingListScreen({ navigation }: Props) {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const sortActive = sortOption !== 'newest';
   const hasActiveFilters =
+    sortOption !== 'newest' ||
     minPrice !== '' ||
     maxPrice !== '' ||
     locationFilterActive ||
@@ -143,17 +143,6 @@ export default function ListingListScreen({ navigation }: Props) {
       else next.add(key);
       return next;
     });
-  };
-
-  const handleOpenSortMenu = () => {
-    const options: AppAlertButton[] = (Object.keys(SORT_LABELS) as SortOption[])
-      .filter((option) => option !== 'distance' || userLocation)
-      .map((option) => ({
-        text: sortOption === option ? `✓ ${SORT_LABELS[option]}` : SORT_LABELS[option],
-        onPress: () => setSortOption(option),
-      }));
-    options.push({ text: 'Vazgeç', style: 'cancel' });
-    showAlert('Sırala', undefined, options);
   };
 
   // Dolap gibi rakiplerde de var: asagi kaydirinca alt sekme cubugu
@@ -438,10 +427,6 @@ export default function ListingListScreen({ navigation }: Props) {
                 >
                   <Ionicons name="layers-outline" size={20} color={colors.text} />
                 </IconButton>
-                <IconButton onPress={handleOpenSortMenu} accessibilityLabel="Sırala">
-                  <Ionicons name="swap-vertical-outline" size={20} color={colors.text} />
-                  {sortActive && <View style={styles.activeDot} />}
-                </IconButton>
                 <IconButton onPress={() => setFilterModalVisible(true)} accessibilityLabel="Filtrele">
                   <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}
@@ -644,6 +629,34 @@ export default function ListingListScreen({ navigation }: Props) {
                       />
                     ))}
                   </View>
+                </View>
+              )}
+
+              <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection('sort')}>
+                <Text style={styles.filterSectionHeaderLabel}>Sıralama</Text>
+                {sortOption !== 'newest' && !expandedSections.has('sort') && (
+                  <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                    {SORT_LABELS[sortOption]}
+                  </Text>
+                )}
+                <Ionicons
+                  name={expandedSections.has('sort') ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textFaint}
+                />
+              </Pressable>
+              {expandedSections.has('sort') && (
+                <View style={[styles.filterSectionBody, styles.sortOptions]}>
+                  {(Object.keys(SORT_LABELS) as SortOption[])
+                    .filter((option) => option !== 'distance' || userLocation)
+                    .map((option) => (
+                      <CategoryChip
+                        key={option}
+                        label={SORT_LABELS[option]}
+                        selected={sortOption === option}
+                        onPress={() => setSortOption(option)}
+                      />
+                    ))}
                 </View>
               )}
 
