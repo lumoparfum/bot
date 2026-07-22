@@ -135,6 +135,13 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
     load();
   };
 
+  const handleOpenVerifiedInfo = () => {
+    showAlert(
+      'Doğrulanmış Hesap',
+      'Bu kullanıcı gerçek bir Google veya Apple hesabıyla giriş yaptı, sahte/bot hesap değil.'
+    );
+  };
+
   const handleOpenReport = () => {
     if (!requireAuth()) return;
     setReportModalVisible(true);
@@ -201,10 +208,9 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
               )}
               <View style={styles.nameRow}>
                 <Text style={styles.name}>{sellerName}</Text>
-                <Ionicons name="checkmark-circle" size={17} color={colors.primary} />
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.meta}>Google ile doğrulandı</Text>
+                <Pressable onPress={handleOpenVerifiedInfo} hitSlop={8}>
+                  <Ionicons name="checkmark-circle" size={17} color={colors.primary} />
+                </Pressable>
                 {summary.accountType === 'business' && (
                   <View style={styles.businessTag}>
                     <Ionicons name="briefcase" size={11} color={colors.navy} />
@@ -226,12 +232,16 @@ export default function SellerProfileScreen({ route, navigation }: Props) {
 
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <StarRating value={averageRating} size={15} />
-                  <Text style={styles.statText}>
-                    {summary.ratingCount > 0
-                      ? `${averageRating.toFixed(1)} (${summary.ratingCount})`
-                      : 'Henüz değerlendirme yok'}
-                  </Text>
+                  {summary.ratingCount > 0 ? (
+                    <>
+                      <StarRating value={averageRating} size={15} />
+                      <Text style={styles.statText}>
+                        {averageRating.toFixed(1)} ({summary.ratingCount})
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.statText}>Henüz değerlendirme yok</Text>
+                  )}
                 </View>
                 <View style={styles.statDot} />
                 <Text style={styles.statText}>{summary.salesCount} satış</Text>
@@ -404,22 +414,16 @@ function createStyles(colors: ColorPalette) {
     },
     nameRow: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 5,
       marginTop: spacing.sm,
+      paddingHorizontal: spacing.lg,
     },
     name: {
       ...typography.title3,
       color: colors.text,
-    },
-    meta: {
-      ...typography.caption,
-      color: colors.textMuted,
-    },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
     },
     businessTag: {
       flexDirection: 'row',
