@@ -332,13 +332,13 @@ a {
 }
 
 .floating-card.top {
-  top: 6%;
-  left: -14%;
+  top: 10%;
+  left: -6%;
 }
 
 .floating-card.bottom {
-  bottom: 2%;
-  right: -18%;
+  bottom: 8%;
+  right: -8%;
 }
 
 .floating-card .dot {
