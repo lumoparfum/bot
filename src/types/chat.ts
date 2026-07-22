@@ -17,7 +17,7 @@ export type Conversation = {
   hiddenFor: string[];
 };
 
-export type OfferStatus = 'pending' | 'accepted' | 'declined';
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'countered';
 
 export type ChatMessage = {
   id: string;

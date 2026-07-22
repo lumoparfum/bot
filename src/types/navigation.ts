@@ -6,6 +6,7 @@ export type HomeStackParamList = {
   SellerProfile: { sellerId: string; sellerName: string };
   Notifications: undefined;
   SavedSearches: undefined;
+  SwipeDiscover: undefined;
 };
 
 export type ProfileStackParamList = {

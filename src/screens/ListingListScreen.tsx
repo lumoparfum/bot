@@ -415,6 +415,12 @@ export default function ListingListScreen({ navigation }: Props) {
                 <Wordmark size={24} />
               </View>
               <View style={styles.topBarActions}>
+                <IconButton
+                  onPress={() => navigation.navigate('SwipeDiscover')}
+                  accessibilityLabel="Kaydırarak Keşfet"
+                >
+                  <Ionicons name="layers-outline" size={20} color={colors.text} />
+                </IconButton>
                 <IconButton onPress={() => setFilterModalVisible(true)} accessibilityLabel="Filtrele">
                   <Ionicons name="options-outline" size={20} color={colors.text} />
                   {hasActiveFilters && <View style={styles.activeDot} />}

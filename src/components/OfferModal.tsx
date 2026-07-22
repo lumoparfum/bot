@@ -13,9 +13,17 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onSubmit: (amount: number) => Promise<void>;
+  title?: string;
+  submitLabel?: string;
 };
 
-export function OfferModal({ visible, onClose, onSubmit }: Props) {
+export function OfferModal({
+  visible,
+  onClose,
+  onSubmit,
+  title = 'Teklif Ver',
+  submitLabel = 'Teklifi Gönder',
+}: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
@@ -53,7 +61,7 @@ export function OfferModal({ visible, onClose, onSubmit }: Props) {
       >
         <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>Teklif Ver</Text>
+            <Text style={styles.title}>{title}</Text>
             <Pressable onPress={handleClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
             </Pressable>
@@ -68,7 +76,7 @@ export function OfferModal({ visible, onClose, onSubmit }: Props) {
           />
 
           <PrimaryButton
-            label="Teklifi Gönder"
+            label={submitLabel}
             onPress={handleSubmit}
             loading={submitting}
             disabled={!amount || Number(amount) <= 0}

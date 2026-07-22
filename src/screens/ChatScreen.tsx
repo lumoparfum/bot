@@ -28,6 +28,7 @@ import {
   deleteConversationForUser,
   markConversationRead,
   respondToOffer,
+  sendCounterOffer,
   sendMessage,
   sendOffer,
   subscribeToMessages,
@@ -58,6 +59,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const [counterOfferTarget, setCounterOfferTarget] = useState<ChatMessage | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(conversationId, setMessages);
@@ -141,6 +143,11 @@ export default function ChatScreen({ route, navigation }: Props) {
     });
   };
 
+  const handleSendCounterOffer = async (amount: number) => {
+    if (!user || !counterOfferTarget) return;
+    await sendCounterOffer(conversationId, counterOfferTarget.id, user.uid, otherUserId, amount);
+  };
+
   // Alici/satici bulusmayi tam bu ekranda konusuyor - guvenlik uyarisi tek
   // satirlik banner'da bogulmasin diye dokununca acilan somut bir liste.
   const handleSafetyTips = () => {
@@ -215,23 +222,33 @@ export default function ChatScreen({ route, navigation }: Props) {
                         ? 'Teklif kabul edildi'
                         : item.offerStatus === 'declined'
                           ? 'Teklif reddedildi'
-                          : 'Teklif bekleniyor'}
+                          : item.offerStatus === 'countered'
+                            ? 'Karşı teklif verildi'
+                            : 'Teklif bekleniyor'}
                     </Text>
                     {canRespond && (
-                      <View style={styles.offerActions}>
+                      <>
+                        <View style={styles.offerActions}>
+                          <Pressable
+                            style={styles.offerDeclineButton}
+                            onPress={() => handleRespondToOffer(item, 'declined')}
+                          >
+                            <Text style={styles.offerDeclineText}>Reddet</Text>
+                          </Pressable>
+                          <Pressable
+                            style={styles.offerAcceptButton}
+                            onPress={() => handleRespondToOffer(item, 'accepted')}
+                          >
+                            <Text style={styles.offerAcceptText}>Kabul Et</Text>
+                          </Pressable>
+                        </View>
                         <Pressable
-                          style={styles.offerDeclineButton}
-                          onPress={() => handleRespondToOffer(item, 'declined')}
+                          style={styles.offerCounterButton}
+                          onPress={() => setCounterOfferTarget(item)}
                         >
-                          <Text style={styles.offerDeclineText}>Reddet</Text>
+                          <Text style={styles.offerCounterText}>Karşı Teklif Ver</Text>
                         </Pressable>
-                        <Pressable
-                          style={styles.offerAcceptButton}
-                          onPress={() => handleRespondToOffer(item, 'accepted')}
-                        >
-                          <Text style={styles.offerAcceptText}>Kabul Et</Text>
-                        </Pressable>
-                      </View>
+                      </>
                     )}
                   </View>
                 </View>
@@ -293,6 +310,14 @@ export default function ChatScreen({ route, navigation }: Props) {
         visible={offerModalVisible}
         onClose={() => setOfferModalVisible(false)}
         onSubmit={handleSendOffer}
+      />
+
+      <OfferModal
+        visible={!!counterOfferTarget}
+        onClose={() => setCounterOfferTarget(null)}
+        onSubmit={handleSendCounterOffer}
+        title="Karşı Teklif Ver"
+        submitLabel="Karşı Teklifi Gönder"
       />
     </SafeAreaView>
   );
@@ -450,6 +475,16 @@ function createStyles(colors: ColorPalette) {
       ...typography.caption,
       fontWeight: '600',
       color: '#fff',
+    },
+    offerCounterButton: {
+      alignItems: 'center',
+      paddingVertical: spacing.xs + 2,
+      marginTop: 2,
+    },
+    offerCounterText: {
+      ...typography.caption,
+      fontWeight: '600',
+      color: colors.primary,
     },
     quickReplyRow: {
       flexGrow: 0,

@@ -172,6 +172,52 @@ exports.onFavoriteRemoved = onDocumentDeleted(
   }
 );
 
+// Favorilere eklenen bir ilanin fiyati dusunce, favorileyen herkese haber
+// verilir - Dolap'ta da benzer bir "begеndigin urune teklif ver, firsati
+// kacirma" mantigi var. listingId alani favorites dokumanlarina ayrica
+// yazildigi icin (bkz. firestore.ts setFavorite) collection group sorgusuyla
+// "bu ilani kimler favoriledi" bulunabiliyor.
+exports.onListingPriceDrop = onDocumentUpdated(
+  { document: 'listings/{listingId}', region: REGION },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    if (typeof before.price !== 'number' || typeof after.price !== 'number') return;
+    if (after.price >= before.price) return;
+
+    const { listingId } = event.params;
+    const favoritesSnap = await db.collectionGroup('favorites').where('listingId', '==', listingId).get();
+    if (favoritesSnap.empty) return;
+
+    const body = `"${after.title}" fiyatı ₺${before.price.toLocaleString('tr-TR')}'den ₺${after.price.toLocaleString('tr-TR')}'ye düştü!`;
+
+    await Promise.all(
+      favoritesSnap.docs.map(async (favDoc) => {
+        const userId = favDoc.ref.parent.parent?.id;
+        if (!userId || userId === after.sellerId) return;
+
+        await db.collection('users').doc(userId).collection('notifications').add({
+          type: 'priceDrop',
+          title: 'Favorilediğin ilanda fiyat düştü',
+          body,
+          listingId,
+          listingImage: after.images?.[0] ?? null,
+          conversationId: null,
+          fromUserId: after.sellerId ?? null,
+          fromUserName: after.sellerName ?? 'Stop82',
+          fromUserPhoto: after.sellerPhotoURL ?? null,
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        const userSnap = await db.doc(`users/${userId}`).get();
+        await sendPush(userSnap.data()?.pushToken, 'Favorilediğin ilanda fiyat düştü', body, { listingId });
+      })
+    );
+  }
+);
+
 exports.onNewListingMatchSavedSearches = onDocumentCreated(
   { document: 'listings/{listingId}', region: REGION },
   async (event) => {

@@ -29,6 +29,8 @@ function notificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMa
       return 'bookmark';
     case 'business':
       return 'briefcase';
+    case 'priceDrop':
+      return 'trending-down';
     case 'message':
     default:
       return 'chatbubble';

@@ -244,7 +244,11 @@ export async function fetchFavoriteIds(uid: string): Promise<string[]> {
 export async function setFavorite(uid: string, listingId: string, favorited: boolean): Promise<void> {
   const favRef = doc(db, 'users', uid, 'favorites', listingId);
   if (favorited) {
-    await setDoc(favRef, { createdAt: serverTimestamp() });
+    // listingId alanini ayrica yaziyoruz (dokuman ID'sinde zaten var ama
+    // Cloud Function tarafinda "bu ilani kimler favoriledi" diye collection
+    // group sorgusu yapabilmek icin bir alan uzerinden filtrelemek gerekiyor -
+    // sadece dokuman ID'sine gore collection group sorgusu yapilamiyor.
+    await setDoc(favRef, { listingId, createdAt: serverTimestamp() });
   } else {
     await deleteDoc(favRef);
   }

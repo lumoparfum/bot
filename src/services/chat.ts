@@ -207,6 +207,23 @@ export async function respondToOffer(
   });
 }
 
+// Karsi teklif: onceki teklif "countered" olarak isaretlenip artik
+// Kabul Et/Reddet gostermiyor, yeni bir "pending" teklif mesaji ekleniyor -
+// pazarlik boylece bir zincir gibi ilerliyor (Dolap'taki "Karsi Teklif Ver"
+// ile ayni mantik).
+export async function sendCounterOffer(
+  conversationId: string,
+  originalMessageId: string,
+  senderId: string,
+  recipientId: string,
+  amount: number
+): Promise<void> {
+  await updateDoc(doc(db, 'conversations', conversationId, 'messages', originalMessageId), {
+    offerStatus: 'countered',
+  });
+  await sendOffer(conversationId, senderId, recipientId, amount);
+}
+
 export async function markConversationRead(conversationId: string, uid: string): Promise<void> {
   await updateDoc(doc(db, 'conversations', conversationId), {
     [`unreadCount.${uid}`]: 0,

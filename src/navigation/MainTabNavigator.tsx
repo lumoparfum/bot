@@ -25,6 +25,7 @@ const FULLSCREEN_ROUTES = new Set([
   'Terms',
   'SavedSearches',
   'Help',
+  'SwipeDiscover',
 ]);
 
 export default function MainTabNavigator() {
