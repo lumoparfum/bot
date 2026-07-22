@@ -476,6 +476,7 @@ a {
 /* Screenshots strip */
 .screens-strip {
   display: flex;
+  justify-content: center;
   gap: 24px;
   overflow-x: auto;
   padding: 8px 4px 24px;
