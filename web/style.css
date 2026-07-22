@@ -293,8 +293,8 @@ a {
 }
 
 .phone-frame {
-  width: 260px;
-  height: 496px;
+  width: 208px;
+  height: 392px;
   border-radius: 40px;
   background: var(--navy);
   padding: 12px;
@@ -941,8 +941,8 @@ body::before {
   }
 
   .phone-frame {
-    width: 200px;
-    height: 382px;
+    width: 160px;
+    height: 302px;
     padding: 9px;
     border-radius: 30px;
     transform: none;
@@ -950,6 +950,18 @@ body::before {
 
   .phone-frame .screen {
     border-radius: 13px;
+  }
+
+  .floating-card {
+    white-space: nowrap;
+  }
+
+  .floating-card.top {
+    left: 0;
+  }
+
+  .floating-card.bottom {
+    right: 0;
   }
 
   .hero h1 {
@@ -991,7 +1003,7 @@ body::before {
   .store-badge { min-width: 0; flex: 1 1 calc(50% - 6px); }
   .category-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .section-head h2 { font-size: 26px; }
-  .phone-frame { width: 172px; height: 330px; padding: 7px; border-radius: 26px; }
+  .phone-frame { width: 138px; height: 262px; padding: 7px; border-radius: 26px; }
   .phone-frame .screen { border-radius: 11px; }
   .download-band h2 { font-size: 22px; }
 }
