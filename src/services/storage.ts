@@ -6,7 +6,7 @@ import { storage } from './firebase';
 // Ilan fotograflari urun detayini (yipranma, hasar vb.) gosterebilmeli, o
 // yuzden daha yuksek boyut/kalite hedefi kullanilir.
 const LISTING_TARGET_DIMENSION = 1080;
-const LISTING_MAX_FILE_BYTES = 35 * 1024;
+const LISTING_MAX_FILE_BYTES = 50 * 1024;
 // Profil fotografi uygulamada en fazla ~84px gosteriliyor - 1080px/50KB
 // gereksiz, cok daha kucuk bir hedef yeterli ve daha hizli yukleniyor.
 const AVATAR_TARGET_DIMENSION = 400;
