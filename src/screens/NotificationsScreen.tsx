@@ -11,7 +11,7 @@ import { radius, spacing, typography, type ColorPalette } from '../constants/the
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
-import { markAllNotificationsRead, markNotificationRead } from '../services/notificationFeed';
+import { markAllNotificationsRead, markNotificationsRead } from '../services/notificationFeed';
 import { formatRelativeDate } from '../utils/format';
 import type { AppNotification, NotificationType } from '../types/notification';
 import type { HomeStackParamList, MainTabParamList } from '../types/navigation';
@@ -20,6 +20,38 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<HomeStackParamList, 'Notifications'>,
   BottomTabScreenProps<MainTabParamList>
 >;
+
+// Ayni kisiden ard arda gelen mesaj bildirimleri (ör. 5 mesaj = 5 ayri satir)
+// listeyi kalabalıklaştırıyordu - WhatsApp'ta oldugu gibi ayni sohbetten
+// gelen ardisik mesaj bildirimlerini tek satirda, sayaçla birlestiriyoruz.
+// Favori/fiyat düşüşü/kayıtlı arama gibi diğer türler eskisi gibi ayrı kalır.
+type NotificationGroup = {
+  key: string;
+  ids: string[];
+  latest: AppNotification;
+  count: number;
+  read: boolean;
+};
+
+function groupNotifications(notifications: AppNotification[]): NotificationGroup[] {
+  const groups: NotificationGroup[] = [];
+  for (const item of notifications) {
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      item.type === 'message' &&
+      last.latest.type === 'message' &&
+      last.latest.conversationId === item.conversationId
+    ) {
+      last.ids.push(item.id);
+      last.count += 1;
+      last.read = last.read && item.read;
+    } else {
+      groups.push({ key: item.id, ids: [item.id], latest: item, count: 1, read: item.read });
+    }
+  }
+  return groups;
+}
 
 function notificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMap {
   switch (type) {
@@ -43,11 +75,13 @@ export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { notifications, unreadCount } = useNotifications();
+  const groups = useMemo(() => groupNotifications(notifications), [notifications]);
 
-  const handlePress = (notification: AppNotification) => {
+  const handlePress = (group: NotificationGroup) => {
     if (!user) return;
-    if (!notification.read) markNotificationRead(user.uid, notification.id).catch(() => {});
+    if (!group.read) markNotificationsRead(user.uid, group.ids).catch(() => {});
 
+    const notification = group.latest;
     if (notification.type === 'message' && notification.conversationId) {
       // ListingDetailScreen.handleMessage'daki ayni sebep/cozum: sekme
       // atlamak yerine Chat, bu ekranin oldugu stack'in ustune push ediliyor.
@@ -85,31 +119,39 @@ export default function NotificationsScreen({ navigation }: Props) {
       </View>
 
       <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
+        data={groups}
+        keyExtractor={(group) => group.key}
         contentContainerStyle={[styles.listContent, { paddingBottom: spacing.xxl + insets.bottom }]}
-        renderItem={({ item }) => (
-          <Pressable style={styles.row} onPress={() => handlePress(item)}>
-            {!item.read && <View style={styles.unreadDot} />}
-            {item.fromUserPhoto ? (
-              <Image source={{ uri: item.fromUserPhoto }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Ionicons name={notificationIcon(item.type)} size={16} color={colors.primary} />
+        renderItem={({ item: group }) => {
+          const item = group.latest;
+          return (
+            <Pressable style={styles.row} onPress={() => handlePress(group)}>
+              {!group.read && <View style={styles.unreadDot} />}
+              {item.fromUserPhoto ? (
+                <Image source={{ uri: item.fromUserPhoto }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Ionicons name={notificationIcon(item.type)} size={16} color={colors.primary} />
+                </View>
+              )}
+              <View style={styles.rowText}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Text style={styles.body} numberOfLines={1}>
+                  {group.count > 1 ? `${group.count} yeni mesaj: ${item.body}` : item.body}
+                </Text>
+                <Text style={styles.time}>{formatRelativeDate(item.createdAt)}</Text>
               </View>
-            )}
-            <View style={styles.rowText}>
-              <Text style={styles.title} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <Text style={styles.body} numberOfLines={1}>
-                {item.body}
-              </Text>
-              <Text style={styles.time}>{formatRelativeDate(item.createdAt)}</Text>
-            </View>
-            {item.listingImage && <Image source={{ uri: item.listingImage }} style={styles.thumb} />}
-          </Pressable>
-        )}
+              {group.count > 1 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{group.count}</Text>
+                </View>
+              )}
+              {item.listingImage && <Image source={{ uri: item.listingImage }} style={styles.thumb} />}
+            </Pressable>
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="notifications-outline" size={28} color={colors.textFaint} />
@@ -199,6 +241,20 @@ function createStyles(colors: ColorPalette) {
       height: 44,
       borderRadius: radius.sm,
       backgroundColor: colors.surface,
+    },
+    countBadge: {
+      minWidth: 22,
+      height: 22,
+      borderRadius: 11,
+      paddingHorizontal: 6,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    countBadgeText: {
+      ...typography.caption,
+      color: '#fff',
+      fontWeight: '700',
     },
     emptyState: {
       alignItems: 'center',

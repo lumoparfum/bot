@@ -47,6 +47,15 @@ export async function markNotificationRead(uid: string, notificationId: string):
   await updateDoc(doc(db, 'users', uid, 'notifications', notificationId), { read: true });
 }
 
+export async function markNotificationsRead(uid: string, notificationIds: string[]): Promise<void> {
+  if (notificationIds.length === 0) return;
+  const batch = writeBatch(db);
+  notificationIds.forEach((id) => {
+    batch.update(doc(db, 'users', uid, 'notifications', id), { read: true });
+  });
+  await batch.commit();
+}
+
 export async function markAllNotificationsRead(
   uid: string,
   notifications: AppNotification[]

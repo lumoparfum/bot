@@ -207,8 +207,19 @@ export default function ListingListScreen({ navigation }: Props) {
       ? locationLabel?.split(',').pop()?.trim() ?? null
       : null;
 
+  // Filtre/konum degisince ust uste birden fazla istek atilabiliyor (ornegin
+  // sehir secince locationLabel/userLocation/locationFilterActive art arda
+  // birkac kez degisiyor). Bunlar aga gittiginde hangisinin once/sonra
+  // donecegi garanti degil - bir onceki (eski) istegin cevabi, yeni secilen
+  // filtreyle atilan istekten SONRA gelirse ekrani eski/yanlis sonuca geri
+  // dondurup "bazen gosteriyor bazen gostermiyor" hissi yaratiyordu. Bu
+  // referansla sadece EN SON atilan istegin cevabi state'e yaziliyor,
+  // gecikmis eski cevaplar sessizce atiliyor.
+  const latestRequestId = useRef(0);
+
   const loadPage = useCallback(
     async (pageToLoad: number, reset: boolean) => {
+      const requestId = ++latestRequestId.current;
       try {
         setLoadError(false);
         const result = await searchListings({
@@ -226,15 +237,19 @@ export default function ListingListScreen({ navigation }: Props) {
           page: pageToLoad,
           hitsPerPage: HITS_PER_PAGE,
         });
+        if (latestRequestId.current !== requestId) return;
         setHits((prev) => (reset ? result.hits : [...prev, ...result.hits]));
         setHasMore(result.hasMore);
         setPage(pageToLoad);
       } catch {
+        if (latestRequestId.current !== requestId) return;
         setLoadError(true);
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
+        if (latestRequestId.current === requestId) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
       }
     },
     [
@@ -254,11 +269,15 @@ export default function ListingListScreen({ navigation }: Props) {
   );
 
   // Yazi kutusuna yazdikca her tus vurusunda istek atmamak icin kisa bir
-  // gecikme (debounce) - diger filtreler (kategori, fiyat vb.) zaten tek
-  // seferlik secimler oldugu icin onlarda gecikmeye gerek yok.
+  // gecikme (debounce). Diger filtreler (kategori, konum vb.) tek seferlik
+  // secimler ama bazilari (ornegin sehir secmek) arka arkaya birkac state'i
+  // birden degistiriyor - 0ms'de her biri ayri bir istek atardi, kucuk bir
+  // gecikme bunlari tek istekte birlestiriyor (yukaridaki latestRequestId
+  // korumasiyla birlikte, yarisan/eskiyen isteklerin sebep oldugu tutarsiz
+  // sonuclari ortadan kaldiriyor).
   useEffect(() => {
     setLoading(true);
-    const timeout = setTimeout(() => loadPage(0, true), query ? 350 : 0);
+    const timeout = setTimeout(() => loadPage(0, true), query ? 350 : 150);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPage]);
