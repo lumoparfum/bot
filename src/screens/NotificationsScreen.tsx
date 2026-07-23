@@ -49,18 +49,24 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (!notification.read) markNotificationRead(user.uid, notification.id).catch(() => {});
 
     if (notification.type === 'message' && notification.conversationId) {
-      // ListingDetailScreen.handleMessage'daki ayni sebep: Messages tab'ini
-      // once ChatList'e ugratmadan dogrudan Chat'e atlamak o stack'i
-      // koksuz birakip geri tusu/kaydirmayi bozuyordu.
-      navigation.navigate('Messages', { screen: 'ChatList' });
+      // ListingDetailScreen.handleMessage'daki ayni sebep: iki ayri ardisik
+      // navigate cagrisi yaris durumuna yol acabiliyordu - hedef stack'in
+      // tum route dizisini tek, atomik bir cagrida veriyoruz.
       navigation.navigate('Messages', {
-        screen: 'Chat',
-        params: {
-          conversationId: notification.conversationId,
-          otherUserId: notification.fromUserId ?? '',
-          otherUserName: notification.fromUserName,
-          otherUserPhoto: notification.fromUserPhoto,
-          listingTitle: '',
+        state: {
+          routes: [
+            { name: 'ChatList' },
+            {
+              name: 'Chat',
+              params: {
+                conversationId: notification.conversationId,
+                otherUserId: notification.fromUserId ?? '',
+                otherUserName: notification.fromUserName,
+                otherUserPhoto: notification.fromUserPhoto,
+                listingTitle: '',
+              },
+            },
+          ],
         },
       });
     } else if (notification.listingId) {

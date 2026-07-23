@@ -137,20 +137,30 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
         buyerPhotoURL: user.photoURL,
       });
-      // Messages tab'i hic acilmamissa dogrudan Chat'e atlamak o stack'i
-      // SADECE Chat ile baslatiyor - altinda ChatList olmadigi icin ne
-      // kenardan kaydirma ne geri tusu duzgun calisiyor, tekrar Mesajlar'a
-      // girildiginde de hep Chat acik kaliyordu. Once ChatList'e ugrayip
-      // stack'i koklendirdikten sonra Chat'i onun ustune itmek bunu cozuyor.
-      navigation.navigate('Messages', { screen: 'ChatList' });
+      // Messages tab'ina dogrudan {screen:'Chat'} ile atlamak o stack'i
+      // SADECE Chat ile baslatiyordu (altinda ChatList olmadan) - kenardan
+      // geri kaydirma calismiyor, geri tusu sekmeyi tamamen terk ediyor,
+      // Mesajlar'a tekrar girilince hep Chat acik kaliyordu. Once ChatList'e
+      // sonra ayrica Chat'e navigate etmek (iki ayri, ardisik cagri) React
+      // Navigation'da yaris durumuna (state henuz commit olmadan ikinci
+      // cagrinin calismasi) yol acip bazen hala islemiyordu - bunun yerine
+      // hedef stack'in TUM route dizisini TEK bir navigate cagrisinda,
+      // atomik sekilde veriyoruz.
       navigation.navigate('Messages', {
-        screen: 'Chat',
-        params: {
-          conversationId,
-          otherUserId: listing.sellerId,
-          otherUserName: listing.sellerName,
-          otherUserPhoto: listing.sellerPhotoURL,
-          listingTitle: listing.title,
+        state: {
+          routes: [
+            { name: 'ChatList' },
+            {
+              name: 'Chat',
+              params: {
+                conversationId,
+                otherUserId: listing.sellerId,
+                otherUserName: listing.sellerName,
+                otherUserPhoto: listing.sellerPhotoURL,
+                listingTitle: listing.title,
+              },
+            },
+          ],
         },
       });
     } catch (error: any) {

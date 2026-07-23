@@ -79,8 +79,17 @@ export default function MainTabNavigator() {
       <Tab.Screen
         name="Messages"
         component={MessagesStackNavigator}
+        // lazy=false: Mesajlar sekmesine kullanici hic dokunmadan (ornegin
+        // bir ilandan dogrudan "Mesaj Gonder" ile) bu stack'e atlanabiliyor.
+        // Varsayilan "lazy" yuklemede stack o ana kadar hic kurulmamis
+        // oluyordu, bu da Chat ekraninin altinda ChatList olmadan "kok"
+        // ekran gibi acilmasina yol aciyordu (kenardan geri kaydirma
+        // calismiyordu, sekmeye tekrar girilince hep Chat kaliyordu). Sekme
+        // uygulama acilir acilmaz arka planda hazir kurulunca bu sorun
+        // kaynagindan ortadan kalkiyor.
         options={({ route }) => ({
           title: 'Mesajlar',
+          lazy: false,
           tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
