@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
-import { useFavorites } from '../context/FavoritesContext';
+import { useFavorites, useIsFavorite } from '../context/FavoritesContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import type { Listing } from '../types/listing';
 
@@ -18,9 +18,9 @@ type Props = {
 export function ListingCard({ listing, onPress, distanceLabel }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { toggleFavorite } = useFavorites();
   const requireAuth = useRequireAuth();
-  const favorited = isFavorite(listing.id);
+  const favorited = useIsFavorite(listing.id);
   const priceDropFrom = (() => {
     if (listing.priceHistory.length < 2) return null;
     const previous = listing.priceHistory[listing.priceHistory.length - 2].price;

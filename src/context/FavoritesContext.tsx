@@ -1,58 +1,78 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchFavoriteIds, setFavorite } from '../services/firestore';
 
+type Listener = () => void;
+
 type FavoritesContextValue = {
   isFavorite: (listingId: string) => boolean;
   toggleFavorite: (listingId: string) => void;
+  subscribe: (listener: Listener) => () => void;
+  getSnapshot: (listingId: string) => boolean;
 };
 
 const FavoritesContext = createContext<FavoritesContextValue | undefined>(undefined);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  // Set React state'te DEGIL bir ref'te tutuluyor - aksi halde her favori
+  // degisikliginde Provider'in context degeri degisip ekrandaki TUM ilan
+  // kartlarini (sadece tiklanani degil) yeniden ciziyordu. useSyncExternalStore
+  // sayesinde artik sadece kendi id'sine abone olan kart yeniden render olur.
+  const idsRef = useRef<Set<string>>(new Set());
+  const listenersRef = useRef<Set<Listener>>(new Set());
+
+  const notify = useCallback(() => {
+    listenersRef.current.forEach((listener) => listener());
+  }, []);
 
   useEffect(() => {
     if (!user) {
-      setFavoriteIds(new Set());
+      idsRef.current = new Set();
+      notify();
       return;
     }
     fetchFavoriteIds(user.uid)
-      .then((ids) => setFavoriteIds(new Set(ids)))
+      .then((ids) => {
+        idsRef.current = new Set(ids);
+        notify();
+      })
       .catch(() => {});
-  }, [user]);
+  }, [user, notify]);
 
   const toggleFavorite = useCallback(
     (listingId: string) => {
       if (!user) return;
-      const wasFavorite = favoriteIds.has(listingId);
-      setFavoriteIds((prev) => {
-        const next = new Set(prev);
-        if (wasFavorite) next.delete(listingId);
-        else next.add(listingId);
-        return next;
-      });
+      const wasFavorite = idsRef.current.has(listingId);
+      const optimistic = new Set(idsRef.current);
+      if (wasFavorite) optimistic.delete(listingId);
+      else optimistic.add(listingId);
+      idsRef.current = optimistic;
+      notify();
+
       setFavorite(user.uid, listingId, !wasFavorite).catch(() => {
         // Sunucu tarafi basarisiz olursa iyimser guncellemeyi geri al.
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          if (wasFavorite) next.add(listingId);
-          else next.delete(listingId);
-          return next;
-        });
+        const reverted = new Set(idsRef.current);
+        if (wasFavorite) reverted.add(listingId);
+        else reverted.delete(listingId);
+        idsRef.current = reverted;
+        notify();
       });
     },
-    [user, favoriteIds]
+    [user, notify]
   );
 
+  const isFavorite = useCallback((listingId: string) => idsRef.current.has(listingId), []);
+  const subscribe = useCallback((listener: Listener) => {
+    listenersRef.current.add(listener);
+    return () => listenersRef.current.delete(listener);
+  }, []);
+  const getSnapshot = useCallback((listingId: string) => idsRef.current.has(listingId), []);
+
   const value = useMemo<FavoritesContextValue>(
-    () => ({
-      isFavorite: (id: string) => favoriteIds.has(id),
-      toggleFavorite,
-    }),
-    [favoriteIds, toggleFavorite]
+    () => ({ isFavorite, toggleFavorite, subscribe, getSnapshot }),
+    [isFavorite, toggleFavorite, subscribe, getSnapshot]
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
@@ -64,4 +84,14 @@ export function useFavorites() {
     throw new Error('useFavorites must be used within a FavoritesProvider');
   }
   return ctx;
+}
+
+// Tek bir ilanin favori durumuna ince taneli abonelik - o ilanin favori
+// durumu degismedigi surece bu bileseni yeniden render etmez (listedeki
+// digerleri favorilenip/cikarilsa bile).
+export function useIsFavorite(listingId: string): boolean {
+  const ctx = useFavorites();
+  const subscribeToId = useCallback((listener: Listener) => ctx.subscribe(listener), [ctx]);
+  const getIdSnapshot = useCallback(() => ctx.getSnapshot(listingId), [ctx, listingId]);
+  return useSyncExternalStore(subscribeToId, getIdSnapshot);
 }

@@ -37,7 +37,7 @@ import {
 import { fetchListingBuyers, getOrCreateConversation } from '../services/chat';
 import { submitReport } from '../services/reports';
 import { useAuth } from '../context/AuthContext';
-import { useFavorites } from '../context/FavoritesContext';
+import { useFavorites, useIsFavorite } from '../context/FavoritesContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import type { Listing } from '../types/listing';
 import type { HomeStackParamList, MainTabParamList } from '../types/navigation';
@@ -54,7 +54,11 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { toggleFavorite } = useFavorites();
+  // route param'daki listingId kullanilir (henuz yuklenmemis olabilecek
+  // "listing" state'i degil) - hook'lar erken return'lerden ONCE, kosulsuz
+  // cagrilmali.
+  const favorited = useIsFavorite(listingId);
   const requireAuth = useRequireAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
@@ -113,7 +117,6 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
 
   const imageHeight = width;
   const isOwnListing = user?.uid === listing.sellerId;
-  const favorited = isFavorite(listing.id);
   const priceDropFrom = (() => {
     if (listing.priceHistory.length < 2) return null;
     const previous = listing.priceHistory[listing.priceHistory.length - 2].price;
