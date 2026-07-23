@@ -19,7 +19,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import { fetchListings } from '../services/firestore';
+import { searchListings } from '../services/search';
 import { formatPrice } from '../utils/format';
 import type { Listing } from '../types/listing';
 import type { HomeStackParamList } from '../types/navigation';
@@ -27,6 +27,7 @@ import type { HomeStackParamList } from '../types/navigation';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
 const OFF_SCREEN_X = SCREEN_WIDTH * 1.5;
+const HITS_PER_PAGE = 30;
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'SwipeDiscover'>;
 
@@ -44,13 +45,45 @@ export default function SwipeDiscoverScreen({ navigation }: Props) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
-    fetchListings()
-      .then((data) => setListings(data.filter((l) => l.sellerId !== user?.uid)))
+    searchListings({ sort: 'newest', excludeSellerIds: user ? [user.uid] : [], page: 0, hitsPerPage: HITS_PER_PAGE })
+      .then((result) => {
+        setListings(result.hits);
+        setHasMore(result.hasMore);
+        setPage(0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user]);
+
+  // Kart yiginin sonuna yaklasinca (Firestore'dan hepsini bir kerede
+  // cekmek yerine, bkz. performans incelemesi) sessizce bir sonraki
+  // sayfayi getirip listenin sonuna ekliyor.
+  useEffect(() => {
+    if (!hasMore || loadingMoreRef.current) return;
+    if (index < listings.length - 5) return;
+    loadingMoreRef.current = true;
+    searchListings({
+      sort: 'newest',
+      excludeSellerIds: user ? [user.uid] : [],
+      page: page + 1,
+      hitsPerPage: HITS_PER_PAGE,
+    })
+      .then((result) => {
+        setListings((prev) => [...prev, ...result.hits]);
+        setHasMore(result.hasMore);
+        setPage((prev) => prev + 1);
+      })
+      .catch(() => {})
+      .finally(() => {
+        loadingMoreRef.current = false;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, listings.length, hasMore]);
 
   const position = useRef(new Animated.ValueXY()).current;
   const current = listings[index];

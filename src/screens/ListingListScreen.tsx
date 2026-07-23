@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -28,7 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import { categories, categoryIcons, conditions, getAttributeDefs, subcategories } from '../types/listing';
 import type { AttributeDef, Listing, ListingLocation } from '../types/listing';
 import { getTabBarStyle } from '../navigation/tabBarStyle';
-import { fetchListings } from '../services/firestore';
+import { searchListings, type SearchSortOption } from '../services/search';
 import { fetchBlockedUserIds } from '../services/blocks';
 import { createSavedSearch } from '../services/savedSearches';
 import { useAuth } from '../context/AuthContext';
@@ -37,7 +38,6 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { formatNumberInput } from '../utils/format';
 import {
   DISTANCE_FILTERS,
-  distanceKm,
   formatDistance,
   hasLocationPermission,
   reverseGeocodeLabel,
@@ -47,8 +47,10 @@ import {
 import type { HomeStackParamList } from '../types/navigation';
 
 const ALL = 'Tümü';
+const HITS_PER_PAGE = 20;
 
-type SortOption = 'newest' | 'priceAsc' | 'priceDesc' | 'distance';
+type SortOption = SearchSortOption;
+type ListingHit = Listing & { distanceKm: number | null };
 
 const SORT_LABELS: Record<SortOption, string> = {
   newest: 'En Yeni',
@@ -67,8 +69,11 @@ export default function ListingListScreen({ navigation }: Props) {
   const requireAuth = useRequireAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [hits, setHits] = useState<ListingHit[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
@@ -193,29 +198,80 @@ export default function ListingListScreen({ navigation }: Props) {
     }, [])
   );
 
-  const loadListings = useCallback(async () => {
-    try {
-      setLoadError(false);
-      const data = await fetchListings();
-      setListings(data);
-    } catch {
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  // Ana sayfa artik Firestore'dan TUM ilanlari sinirsiz cekmek yerine
+  // (bkz. performans incelemesi) kendi arama sunucumuza (Meilisearch)
+  // sayfali sekilde soruyor - filtre/siralama degisince sayfa 0'a donup
+  // yeniden, "daha fazla yukle" ile sonraki sayfalari getiriyor.
+  const cityLabel =
+    locationFilterActive && selectedRadius === null
+      ? locationLabel?.split(',').pop()?.trim() ?? null
+      : null;
+
+  const loadPage = useCallback(
+    async (pageToLoad: number, reset: boolean) => {
+      try {
+        setLoadError(false);
+        const result = await searchListings({
+          query,
+          category: selectedCategory === ALL ? null : selectedCategory,
+          subcategory: selectedSubcategory,
+          condition: selectedCondition,
+          minPrice: minPrice ? Number(minPrice) : null,
+          maxPrice: maxPrice ? Number(maxPrice) : null,
+          sort: sortOption,
+          userLocation: locationFilterActive ? userLocation : null,
+          radiusKm: locationFilterActive ? selectedRadius : null,
+          cityLabel,
+          excludeSellerIds: Array.from(blockedIds),
+          page: pageToLoad,
+          hitsPerPage: HITS_PER_PAGE,
+        });
+        setHits((prev) => (reset ? result.hits : [...prev, ...result.hits]));
+        setHasMore(result.hasMore);
+        setPage(pageToLoad);
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+        setRefreshing(false);
+      }
+    },
+    [
+      query,
+      selectedCategory,
+      selectedSubcategory,
+      selectedCondition,
+      minPrice,
+      maxPrice,
+      sortOption,
+      locationFilterActive,
+      selectedRadius,
+      userLocation,
+      cityLabel,
+      blockedIds,
+    ]
+  );
+
+  // Yazi kutusuna yazdikca her tus vurusunda istek atmamak icin kisa bir
+  // gecikme (debounce) - diger filtreler (kategori, fiyat vb.) zaten tek
+  // seferlik secimler oldugu icin onlarda gecikmeye gerek yok.
+  useEffect(() => {
+    setLoading(true);
+    const timeout = setTimeout(() => loadPage(0, true), query ? 350 : 0);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPage]);
 
   useFocusEffect(
     useCallback(() => {
-      loadListings();
       if (user) {
         fetchBlockedUserIds(user.uid).then((ids) => setBlockedIds(new Set(ids)));
       } else {
         setBlockedIds(new Set());
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadListings, user])
+    }, [user])
   );
 
   useEffect(() => {
@@ -230,9 +286,15 @@ export default function ListingListScreen({ navigation }: Props) {
     })();
   }, []);
 
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    setLoadingMore(true);
+    loadPage(page + 1, false);
+  };
+
   const handleRefresh = () => {
     setRefreshing(true);
-    loadListings();
+    loadPage(0, true);
   };
 
   // LocationPickerModal, Filtrele sayfasinin (Modal) icinden aciliyor - iki
@@ -307,100 +369,20 @@ export default function ListingListScreen({ navigation }: Props) {
     setSelectedAttrFilters({});
   };
 
+  // Kategori/fiyat/konum/metin araması artık sunucuda (Meilisearch) yapılıyor.
+  // Beden/Marka gibi kategoriye özel özellik filtreleri henüz sunucu
+  // tarafında yok (kategori başına dinamik alanlar için ayrı bir çalışma
+  // gerekiyor) - o yüzden şimdilik sadece o an yüklü sayfa üzerinde ek bir
+  // daraltma olarak uygulanıyor.
   const rows = useMemo(() => {
-    const min = minPrice ? Number(minPrice) : null;
-    const max = maxPrice ? Number(maxPrice) : null;
-
-    return listings
-      .map((listing) => {
-        const distance =
-          userLocation && listing.location.latitude != null && listing.location.longitude != null
-            ? distanceKm(userLocation, {
-                latitude: listing.location.latitude,
-                longitude: listing.location.longitude,
-              })
-            : null;
-        return { listing, distance };
-      })
-      .filter(({ listing }) => !blockedIds.has(listing.sellerId))
-      .filter(({ listing, distance }) => {
-        const matchesCategory = selectedCategory === ALL || listing.category === selectedCategory;
-        const matchesSubcategory =
-          !selectedSubcategory || listing.subcategory === selectedSubcategory;
-        const matchesCondition = !selectedCondition || listing.condition === selectedCondition;
-        const matchesAttrs = Object.entries(selectedAttrFilters).every(
-          ([key, value]) => listing.attributes[key] === value
-        );
-        // Baslikla sinirli kalmasin - aciklama ve marka/model/beden gibi
-        // yapilandirilmis ozelliklerde de arasin.
-        const q = query.trim().toLocaleLowerCase('tr-TR');
-        const matchesQuery =
-          !q ||
-          listing.title.toLocaleLowerCase('tr-TR').includes(q) ||
-          listing.description.toLocaleLowerCase('tr-TR').includes(q) ||
-          Object.values(listing.attributes).some((value) =>
-            value.toLocaleLowerCase('tr-TR').includes(q)
+    const filtered =
+      Object.keys(selectedAttrFilters).length === 0
+        ? hits
+        : hits.filter((listing) =>
+            Object.entries(selectedAttrFilters).every(([key, value]) => listing.attributes[key] === value)
           );
-        const matchesMin = min === null || listing.price >= min;
-        const matchesMax = max === null || listing.price <= max;
-
-        let matchesLocation = true;
-        if (locationFilterActive) {
-          if (selectedRadius !== null) {
-            // Km secilmisse tam mesafeye gore filtrele.
-            matchesLocation = distance !== null && distance <= selectedRadius;
-          } else {
-            // Km secilmemisse ("Tumu") sehir adina gore filtrele - kullanici
-            // sadece il/ilce bazinda arayabilsin, kesin mesafe sart olmasin.
-            const cityQuery = locationLabel?.split(',').pop()?.trim().toLocaleLowerCase('tr-TR');
-            matchesLocation = !cityQuery
-              || listing.location.label.toLocaleLowerCase('tr-TR').includes(cityQuery);
-          }
-        }
-
-        return (
-          matchesCategory &&
-          matchesSubcategory &&
-          matchesCondition &&
-          matchesAttrs &&
-          matchesQuery &&
-          matchesLocation &&
-          matchesMin &&
-          matchesMax
-        );
-      })
-      .sort((a, b) => {
-        switch (sortOption) {
-          case 'priceAsc':
-            return a.listing.price - b.listing.price;
-          case 'priceDesc':
-            return b.listing.price - a.listing.price;
-          case 'distance':
-            if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
-            if (a.distance !== null) return -1;
-            if (b.distance !== null) return 1;
-            return b.listing.createdAt - a.listing.createdAt;
-          case 'newest':
-          default:
-            return b.listing.createdAt - a.listing.createdAt;
-        }
-      });
-  }, [
-    listings,
-    blockedIds,
-    selectedCategory,
-    selectedSubcategory,
-    selectedCondition,
-    selectedAttrFilters,
-    query,
-    selectedRadius,
-    userLocation,
-    locationFilterActive,
-    locationLabel,
-    sortOption,
-    minPrice,
-    maxPrice,
-  ]);
+    return filtered.map((listing) => ({ listing, distance: listing.distanceKm }));
+  }, [hits, selectedAttrFilters]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -414,6 +396,8 @@ export default function ListingListScreen({ navigation }: Props) {
         scrollEventThrottle={16}
         refreshing={refreshing}
         onRefresh={handleRefresh}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
         ListHeaderComponent={
           <View>
             <View style={styles.topBar}>
@@ -527,6 +511,11 @@ export default function ListingListScreen({ navigation }: Props) {
                     : 'Aramanla eşleşen ilan bulunamadı.'}
               </Text>
             </View>
+          ) : null
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator color={colors.primary} style={styles.loadingMore} />
           ) : null
         }
       />
@@ -878,6 +867,9 @@ function createStyles(colors: ColorPalette) {
       justifyContent: 'center',
       paddingTop: spacing.xxl,
       gap: spacing.sm,
+    },
+    loadingMore: {
+      paddingVertical: spacing.lg,
     },
     emptyText: {
       ...typography.subhead,

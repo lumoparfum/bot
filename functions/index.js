@@ -1,10 +1,12 @@
 const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 const { getAuth } = require('firebase-admin/auth');
+const https = require('https');
 
 initializeApp();
 const db = getFirestore();
@@ -12,6 +14,84 @@ const db = getFirestore();
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const REGION = 'europe-west1';
 const LISTING_LIFETIME_DAYS = 35;
+
+// Kendi VPS'imizde barindirilan Meilisearch - Firestore tum ilanlari
+// sinirsiz cekmeye devam etmemesi icin (bkz. performans incelemesi),
+// gezinme/arama artik bu index uzerinden, sayfali sekilde yapiliyor.
+// Master key sadece burada (sunucu tarafinda, secret olarak) kullanilir -
+// istemci uygulama sadece "search" yetkili ayri bir anahtar kullanir.
+const MEILI_HOST = 'https://search.stop82.com';
+const MEILI_MASTER_KEY = defineSecret('MEILI_MASTER_KEY');
+
+// NOT: burada bilerek global fetch() DEGIL Node'un https modulu kullanildi -
+// fetch ile Turkce (i, s, g, u, o, c) gibi UTF-8 coklu-byte karakterler
+// Meilisearch'e bozuk gidiyordu (Content-Length string.length'e gore
+// hesaplaniyor olabilir, byte uzunluguna gore degil). asc-api.js/play-api.js
+// scriptlerinde zaten kanitlanmis olan bu desen (acik Content-Length ile
+// https.request) sorunu cozuyor.
+function meiliRequest(path, method, apiKey, body) {
+  return new Promise((resolve, reject) => {
+    const data = body ? Buffer.from(JSON.stringify(body), 'utf-8') : null;
+    const req = https.request(
+      {
+        hostname: 'search.stop82.com',
+        path,
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          ...(data ? { 'Content-Length': data.length } : {}),
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          const bodyText = Buffer.concat(chunks).toString('utf-8');
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(bodyText ? JSON.parse(bodyText) : null);
+          } else {
+            reject(new Error(`Meilisearch ${method} ${path} -> ${res.statusCode}: ${bodyText}`));
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+function listingToMeiliDoc(id, listing) {
+  const doc = {
+    id,
+    title: listing.title ?? '',
+    description: listing.description ?? '',
+    category: listing.category ?? '',
+    subcategory: listing.subcategory ?? '',
+    condition: listing.condition ?? '',
+    price: listing.price ?? 0,
+    locationLabel: listing.location?.label ?? '',
+    sellerId: listing.sellerId ?? '',
+    sellerName: listing.sellerName ?? '',
+    sellerPhotoURL: listing.sellerPhotoURL ?? null,
+    images: listing.images ?? [],
+    status: listing.status ?? 'active',
+    soldTo: listing.soldTo ?? null,
+    createdAt: listing.createdAt instanceof Timestamp ? listing.createdAt.toMillis() : Date.now(),
+    viewCount: listing.viewCount ?? 0,
+    favoriteCount: listing.favoriteCount ?? 0,
+    priceHistory: Array.isArray(listing.priceHistory) ? listing.priceHistory : [],
+    attributes: listing.attributes ?? {},
+    attributesText: Object.values(listing.attributes ?? {}).join(' '),
+  };
+  // Meilisearch'in _geoRadius/_geoPoint siralamasi icin - konum secilmemis
+  // ilanlarda (latitude/longitude yok) bu alan hic yazilmaz.
+  if (listing.location?.latitude != null && listing.location?.longitude != null) {
+    doc._geo = { lat: listing.location.latitude, lng: listing.location.longitude };
+  }
+  return doc;
+}
 
 async function sendPush(pushToken, title, body, data) {
   if (!pushToken) return;
@@ -439,4 +519,41 @@ exports.appleAuthCallback = onRequest({ region: REGION }, (req, res) => {
   if (body.user) params.set('user', body.user);
   res.redirect(302, `stop82://auth-callback?${params.toString()}`);
 });
+
+// Meilisearch senkronizasyonu: bir ilan olusturulunca/guncellenince/silinince
+// arama indeksindeki kopyasi otomatik guncellenir - istemci artik Firestore'dan
+// tum ilanlari degil, buradan sayfali/aranabilir sekilde okuyor.
+exports.onListingCreatedSyncSearch = onDocumentCreated(
+  { document: 'listings/{listingId}', region: REGION, secrets: [MEILI_MASTER_KEY] },
+  async (event) => {
+    const listing = event.data?.data();
+    if (!listing) return;
+    const { listingId } = event.params;
+    await meiliRequest('/indexes/listings/documents', 'POST', MEILI_MASTER_KEY.value(), [
+      listingToMeiliDoc(listingId, listing),
+    ]).catch((err) => console.error('Meili sync (create) basarisiz:', err.message));
+  }
+);
+
+exports.onListingUpdatedSyncSearch = onDocumentUpdated(
+  { document: 'listings/{listingId}', region: REGION, secrets: [MEILI_MASTER_KEY] },
+  async (event) => {
+    const listing = event.data?.after?.data();
+    if (!listing) return;
+    const { listingId } = event.params;
+    await meiliRequest('/indexes/listings/documents', 'POST', MEILI_MASTER_KEY.value(), [
+      listingToMeiliDoc(listingId, listing),
+    ]).catch((err) => console.error('Meili sync (update) basarisiz:', err.message));
+  }
+);
+
+exports.onListingDeletedSyncSearch = onDocumentDeleted(
+  { document: 'listings/{listingId}', region: REGION, secrets: [MEILI_MASTER_KEY] },
+  async (event) => {
+    const { listingId } = event.params;
+    await meiliRequest(`/indexes/listings/documents/${listingId}`, 'DELETE', MEILI_MASTER_KEY.value()).catch(
+      (err) => console.error('Meili sync (delete) basarisiz:', err.message)
+    );
+  }
+);
 
