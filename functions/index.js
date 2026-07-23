@@ -427,3 +427,62 @@ exports.appleAuthCallback = onRequest({ region: REGION }, (req, res) => {
   if (body.user) params.set('user', body.user);
   res.redirect(302, `stop82://auth-callback?${params.toString()}`);
 });
+
+// Guvenlik agi: onUserProfileUpdated normalde profil degisince ilan/sohbet
+// kopyalarini aninda senkronize eder, ama 21-22 Temmuz arasinda bir sure
+// PERMISSION_DENIED alip sessizce basarisiz oldugu goruldu (Cloud Functions
+// log) - o araliktaki degisiklikler kalici olarak "eski" kalmisti. Anlik
+// tetikleyici bir daha sessizce kirilirsa sistemi tek seferde zorlamadan
+// kendi kendine duzelsin diye, her gece kucuk bir mutabakat (reconciliation)
+// gecisi yapiliyor - sadece gercekten uyusmayan kayitlari yazar.
+exports.nightlyProfileSync = onSchedule(
+  { schedule: 'every 24 hours', region: REGION },
+  async () => {
+    const usersSnap = await db.collection('users').get();
+    const userMap = new Map();
+    usersSnap.docs.forEach((d) => userMap.set(d.id, d.data()));
+
+    const listingsSnap = await db.collection('listings').get();
+    await Promise.all(
+      listingsSnap.docs.map(async (docSnap) => {
+        const listing = docSnap.data();
+        const owner = userMap.get(listing.sellerId);
+        if (!owner) return;
+        const newName = owner.displayName ?? 'Stop82 Kullanıcısı';
+        const newPhoto = owner.photoURL ?? null;
+        if (listing.sellerName !== newName || listing.sellerPhotoURL !== newPhoto) {
+          await docSnap.ref.update({ sellerName: newName, sellerPhotoURL: newPhoto }).catch(() => {});
+        }
+      })
+    );
+
+    const convosSnap = await db.collection('conversations').get();
+    await Promise.all(
+      convosSnap.docs.map(async (docSnap) => {
+        const convo = docSnap.data();
+        const updates = {};
+        const seller = userMap.get(convo.sellerId);
+        const buyer = userMap.get(convo.buyerId);
+        if (seller) {
+          const newSellerName = seller.displayName ?? 'Stop82 Kullanıcısı';
+          const newSellerPhoto = seller.photoURL ?? null;
+          if (convo.sellerName !== newSellerName || convo.sellerPhotoURL !== newSellerPhoto) {
+            updates.sellerName = newSellerName;
+            updates.sellerPhotoURL = newSellerPhoto;
+          }
+        }
+        if (buyer) {
+          const newBuyerName = buyer.displayName ?? 'Stop82 Kullanıcısı';
+          const newBuyerPhoto = buyer.photoURL ?? null;
+          if (convo.buyerName !== newBuyerName || convo.buyerPhotoURL !== newBuyerPhoto) {
+            updates.buyerName = newBuyerName;
+            updates.buyerPhotoURL = newBuyerPhoto;
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          await docSnap.ref.update(updates).catch(() => {});
+        }
+      })
+    );
+  }
+);
