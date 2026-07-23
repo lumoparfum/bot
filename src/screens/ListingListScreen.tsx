@@ -183,17 +183,22 @@ export default function ListingListScreen({ navigation }: Props) {
     lastScrollY.current = currentY;
   };
 
-  // Ekrandan ayrilirken (baska sekmeye gecince) bar gizli kalmis olabilir -
-  // geri donulunce her zaman gorunur baslasin.
+  // ONEMLI: burada ekrandan ayrilirken (blur'da) tab bar'i imperatif olarak
+  // "geri goster" diye bir setOptions cagrisi YAPILMIYOR - bilerek. Eskiden
+  // vardi ama bir ilana tiklanip ListingDetail'e gecildiginde de calisiyordu:
+  // MainTabNavigator zaten FULLSCREEN_ROUTES listesiyle (ListingDetail, Chat
+  // vb.) tab bar'i deklaratif olarak gizliyor, ama bu blur temizligi TAM O
+  // SIRADA tab bar'i geri gosterip onunla catisiyordu - "kaydirinca
+  // gizlenmisken bir ilana girersen Mesaj Gonder barinin ustunde beklenmedik
+  // bir tab bar kaliyor" bugu buydu. MainTabNavigator'daki
+  // hideTabBarWhenNested zaten HER senaryoda (baska sekmeye gecis dahil)
+  // dogru tabBarStyle'i kendi hesapliyor. Sadece kendi ic sayacimizi (bu
+  // ekrana GERI donulunce sifirdan basliyor mu) senkron tutmak icin, ekrana
+  // odaklanildiginda (setOptions cagirmadan) referanslari sifirliyoruz.
   useFocusEffect(
     useCallback(() => {
-      return () => {
-        if (tabBarHidden.current) {
-          navigation.getParent()?.setOptions({ tabBarStyle: getTabBarStyle(colors, insets.bottom) });
-          tabBarHidden.current = false;
-          lastScrollY.current = 0;
-        }
-      };
+      tabBarHidden.current = false;
+      lastScrollY.current = 0;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
