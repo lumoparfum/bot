@@ -22,7 +22,11 @@ export async function reverseGeocodeLabel(coords: Coordinates): Promise<string |
     const results = await Location.reverseGeocodeAsync(coords);
     const first = results[0];
     if (!first) return null;
-    const parts = [first.subregion || first.district, first.city || first.region].filter(Boolean);
+    // "region" il (ör. Samsun), "city" kucuk yerlesimlerde (ör. Bafra gibi
+    // bir ilce) ilce adini donduruyor - eskiden city once denendigi icin
+    // "Bafra, Bafra" gibi hatali etiketler olusuyordu (il yerine ilce iki
+    // kez gorunuyordu). Il her zaman region'dan alinmali.
+    const parts = [first.district || first.subregion, first.region || first.city].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : null;
   } catch {
     return null;
