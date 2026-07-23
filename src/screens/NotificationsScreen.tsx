@@ -49,6 +49,10 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (!notification.read) markNotificationRead(user.uid, notification.id).catch(() => {});
 
     if (notification.type === 'message' && notification.conversationId) {
+      // ListingDetailScreen.handleMessage'daki ayni sebep: Messages tab'ini
+      // once ChatList'e ugratmadan dogrudan Chat'e atlamak o stack'i
+      // koksuz birakip geri tusu/kaydirmayi bozuyordu.
+      navigation.navigate('Messages', { screen: 'ChatList' });
       navigation.navigate('Messages', {
         screen: 'Chat',
         params: {

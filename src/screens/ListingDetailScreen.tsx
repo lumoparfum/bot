@@ -134,6 +134,12 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
         buyerPhotoURL: user.photoURL,
       });
+      // Messages tab'i hic acilmamissa dogrudan Chat'e atlamak o stack'i
+      // SADECE Chat ile baslatiyor - altinda ChatList olmadigi icin ne
+      // kenardan kaydirma ne geri tusu duzgun calisiyor, tekrar Mesajlar'a
+      // girildiginde de hep Chat acik kaliyordu. Once ChatList'e ugrayip
+      // stack'i koklendirdikten sonra Chat'i onun ustune itmek bunu cozuyor.
+      navigation.navigate('Messages', { screen: 'ChatList' });
       navigation.navigate('Messages', {
         screen: 'Chat',
         params: {
@@ -355,7 +361,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
                 <Text style={styles.sellerName}>{listing.sellerName}</Text>
                 <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
               </View>
-              <Text style={styles.sellerMeta}>Google ile doğrulandı</Text>
+              <Text style={styles.sellerMeta}>Doğrulanmış hesap</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
           </Pressable>
