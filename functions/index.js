@@ -99,7 +99,15 @@ async function sendPush(pushToken, title, body, data) {
     await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ to: pushToken, title, body, data }),
+      body: JSON.stringify({
+        to: pushToken,
+        title,
+        body,
+        data,
+        sound: 'default',
+        channelId: 'default',
+        priority: 'high',
+      }),
     });
   } catch {
     // Push bildirimi best-effort bir yan etki - basarisiz olursa (Expo API
