@@ -9,6 +9,11 @@ import { PrefixInput } from './PrefixInput';
 import { PrimaryButton } from './PrimaryButton';
 import { formatNumberInput } from '../utils/format';
 
+// Ust siniri olmadan "1000000000000000300000000" gibi anlamsiz tekliflerin
+// gonderilip kabul edilebilmesi bir gercek bug'di - ikinci el pazarinda hicbir
+// urun bu rakama yaklasmaz bile, 100 milyon TL zaten cok comert bir tavan.
+const MAX_OFFER_AMOUNT = 100_000_000;
+
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -38,6 +43,10 @@ export function OfferModal({
   const handleSubmit = async () => {
     const value = Number(amount);
     if (!value || value <= 0 || submitting) return;
+    if (value > MAX_OFFER_AMOUNT) {
+      showAlert('Geçersiz Tutar', `Teklif en fazla ₺${MAX_OFFER_AMOUNT.toLocaleString('tr-TR')} olabilir.`);
+      return;
+    }
     setSubmitting(true);
     try {
       await onSubmit(value);
@@ -70,7 +79,9 @@ export function OfferModal({
           <PrefixInput
             prefix="₺"
             value={formatNumberInput(amount)}
-            onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ''))}
+            onChangeText={(t) =>
+              setAmount(t.replace(/[^0-9]/g, '').slice(0, String(MAX_OFFER_AMOUNT).length))
+            }
             placeholder="0"
             keyboardType="number-pad"
           />
@@ -79,7 +90,7 @@ export function OfferModal({
             label={submitLabel}
             onPress={handleSubmit}
             loading={submitting}
-            disabled={!amount || Number(amount) <= 0}
+            disabled={!amount || Number(amount) <= 0 || Number(amount) > MAX_OFFER_AMOUNT}
           />
         </View>
       </KeyboardAvoidingView>

@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import { blockUser } from '../services/blocks';
 import {
   deleteConversationForUser,
+  fetchConversation,
   markConversationRead,
   respondToOffer,
   sendCounterOffer,
@@ -37,11 +38,20 @@ import {
 import type { ChatMessage } from '../types/chat';
 import type { MainTabParamList, MessagesStackParamList } from '../types/navigation';
 
-const QUICK_REPLIES = [
+// Alici ve satici icin ayri hazir cevaplar - eskiden tek liste herkese
+// gosteriliyordu, satici kendi ilanina "hala satılık mı?" diye
+// sorabiliyormus gibi goruyordu.
+const BUYER_QUICK_REPLIES = [
   'Hâlâ satılık mı?',
   'Son fiyat nedir?',
   'Nerede buluşabiliriz?',
   'Uygun, alıyorum',
+];
+const SELLER_QUICK_REPLIES = [
+  'Evet, hâlâ satılık',
+  'Biraz pazarlık payı var',
+  'Nerede buluşabiliriz?',
+  'Bugün müsaitim',
 ];
 
 // Karsi taraf hic yanit vermeden art arda spam gibi mesaj/teklif atilmasin diye -
@@ -75,11 +85,19 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [counterOfferTarget, setCounterOfferTarget] = useState<ChatMessage | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(conversationId, setMessages);
     return unsubscribe;
   }, [conversationId]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchConversation(conversationId)
+      .then((conversation) => setIsSeller(conversation?.sellerId === user.uid))
+      .catch(() => {});
+  }, [conversationId, user]);
 
   // Alt bosluk (insets.bottom) sadece klavye kapaliyken home indicator'i
   // temizlemek icin gerekli - klavye acikken KeyboardAvoidingView zaten her
@@ -250,7 +268,7 @@ export default function ChatScreen({ route, navigation }: Props) {
               const canRespond = !isMine && item.offerStatus === 'pending';
               return (
                 <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
-                  <View style={styles.offerCard}>
+                  <View style={[styles.offerCard, isMine && styles.offerCardMine]}>
                     <View style={styles.offerHeader}>
                       <Ionicons name="pricetag" size={16} color={colors.primary} />
                       <Text style={styles.offerAmount}>
@@ -317,7 +335,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           contentContainerStyle={styles.quickReplyContent}
           keyboardShouldPersistTaps="handled"
         >
-          {QUICK_REPLIES.map((reply) => (
+          {(isSeller ? SELLER_QUICK_REPLIES : BUYER_QUICK_REPLIES).map((reply) => (
             <Pressable key={reply} style={styles.quickReplyChip} onPress={() => handleSend(reply)}>
               <Text style={styles.quickReplyText}>{reply}</Text>
             </Pressable>
@@ -477,6 +495,13 @@ function createStyles(colors: ColorPalette) {
       gap: spacing.xs,
       borderWidth: 1,
       borderColor: colors.border,
+    },
+    // Kim gonderdiyse (ben/karsi taraf) metin baloncuklarinda oldugu gibi
+    // teklif kartinin da rengi/kenarligi farkli olsun diye - eskiden ikisi
+    // de ayni notr griydi, hangisinin kime ait oldugunu ayirt etmek zordu.
+    offerCardMine: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
     },
     offerHeader: {
       flexDirection: 'row',

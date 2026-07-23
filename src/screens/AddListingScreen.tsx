@@ -40,6 +40,9 @@ import { formatNumberInput } from '../utils/format';
 import type { MainTabParamList } from '../types/navigation';
 
 const MAX_PHOTOS = 4;
+// OfferModal'daki ayni mantik: ust sinir olmadan anlamsiz (ör. 15 haneli)
+// fiyatlar girilebiliyordu.
+const MAX_PRICE = 100_000_000;
 const EMPTY_LOCATION: ListingLocation = { label: '', latitude: null, longitude: null };
 
 // Ilk fotograf "kapak" olarak kullanilir (ana sayfadaki ilan kartinda
@@ -137,6 +140,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
     subcategory !== null &&
     condition !== null &&
     Number(price) > 0 &&
+    Number(price) <= MAX_PRICE &&
     description.trim().length >= 10;
 
   const handleSelectCategory = (
@@ -429,7 +433,9 @@ export default function AddListingScreen({ navigation, route }: Props) {
           <PrefixInput
             prefix="₺"
             value={formatNumberInput(price)}
-            onChangeText={(text) => setPrice(text.replace(/[^0-9]/g, ''))}
+            onChangeText={(text) =>
+              setPrice(text.replace(/[^0-9]/g, '').slice(0, String(MAX_PRICE).length))
+            }
             placeholder="0"
             keyboardType="number-pad"
           />

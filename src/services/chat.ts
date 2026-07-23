@@ -114,6 +114,12 @@ export async function fetchListingBuyers(
     }));
 }
 
+export async function fetchConversation(conversationId: string): Promise<Conversation | null> {
+  const snap = await getDoc(doc(db, 'conversations', conversationId));
+  if (!snap.exists()) return null;
+  return mapConversation(snap.id, snap.data());
+}
+
 export function subscribeToConversations(
   uid: string,
   callback: (conversations: Conversation[]) => void
