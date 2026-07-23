@@ -257,6 +257,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <FlatList
+          style={styles.flex}
           data={[...messages].reverse()}
           keyExtractor={(item) => item.id}
           inverted

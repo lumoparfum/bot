@@ -248,11 +248,15 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      {/* Yorumlar bolumunun yazi kutusu (CommentsSection) klavyeden kacinma
+          gerektiriyor - ama bunu butun ekrani (alttaki sabit "Mesaj Gonder"
+          barini da) saran KeyboardAvoidingView icine koymak, klavye acilinca
+          o barin da yukari kaymasina, "olmasi gereken yerden" oynamasina
+          yol aciyordu. Artik sadece kaydirilabilir icerik klavyeden kaciniyor,
+          sabit bar her zaman gercek ekran altina sabit kaliyor. */}
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         <View style={{ height: imageHeight }}>
           <ScrollView
             horizontal
@@ -384,7 +388,8 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
 
           <View style={{ height: 100 + insets.bottom }} />
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={[styles.headerControls, { top: insets.top + spacing.sm }]}>
         <IconButton
@@ -470,7 +475,7 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         onClose={() => setBuyerPickerVisible(false)}
         onSelect={confirmMarkSold}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -479,6 +484,9 @@ function createStyles(colors: ColorPalette) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    flex: {
+      flex: 1,
     },
     noImage: {
       backgroundColor: colors.surface,
