@@ -225,13 +225,25 @@ exports.onNewListingMatchSavedSearches = onDocumentCreated(
     if (!listing) return;
     const { listingId } = event.params;
 
-    const searchesSnap = await db.collection('savedSearches').get();
-    if (searchesSnap.empty) return;
+    // Tum kayitli aramalari sinirsiz cekmek yerine (olcek buyudukce
+    // pahali/yavas) sadece bu ilanin kategorisiyle eslesebilecekleri
+    // sorguluyoruz: kategori belirtmemis (tum kategorilerde arayan)
+    // aramalar + tam bu kategoriyi belirtenler.
+    const [categorylessSnap, categorySnap] = await Promise.all([
+      db.collection('savedSearches').where('category', '==', null).get(),
+      listing.category
+        ? db.collection('savedSearches').where('category', '==', listing.category).get()
+        : Promise.resolve(null),
+    ]);
+    const searchDocs = categorySnap
+      ? [...categorylessSnap.docs, ...categorySnap.docs]
+      : categorylessSnap.docs;
+    if (searchDocs.length === 0) return;
 
     const title = (listing.title ?? '').toLocaleLowerCase('tr-TR');
     const description = (listing.description ?? '').toLocaleLowerCase('tr-TR');
 
-    const matches = searchesSnap.docs.filter((docSnap) => {
+    const matches = searchDocs.filter((docSnap) => {
       const search = docSnap.data();
       if (search.uid === listing.sellerId) return false;
       if (search.query) {
