@@ -55,8 +55,12 @@ export async function searchListings(params: SearchListingsParams): Promise<Sear
       `_geoRadius(${params.userLocation.latitude}, ${params.userLocation.longitude}, ${params.radiusKm * 1000})`
     );
   } else if (params.cityLabel) {
-    // Km secilmemis ("Tumu") - sadece sehir adina gore filtrele.
-    filters.push(`locationLabel = "${escapeFilterValue(params.cityLabel)}"`);
+    // Km secilmemis ("Tumu") - sadece sehir adina gore filtrele. locationLabel
+    // "Ilce, Sehir" gibi TAM adresi tutuyor - buna karsi esitlik denemek
+    // (ör. locationLabel = "Bafra") "Bafra, Bafra" gibi degerlerle hicbir
+    // zaman eslesmiyordu. city alani, ayni "son virgul parcasi" mantigiyla
+    // sunucu tarafinda ayrica hesaplanip filtrelenebilir yapildi.
+    filters.push(`city = "${escapeFilterValue(params.cityLabel)}"`);
   }
 
   const sort: string[] = [];

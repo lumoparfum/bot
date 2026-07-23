@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   DarkTheme,
@@ -20,50 +20,72 @@ import type { RootStackParamList } from './src/types/navigation';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
+type NotificationNavData = {
+  conversationId?: string;
+  otherUserId?: string;
+  otherUserName?: string;
+  otherUserPhoto?: string | null;
+  listingTitle?: string;
+  listingId?: string;
+};
+
+function navigateFromNotificationData(data: NotificationNavData) {
+  if (data.conversationId) {
+    navigationRef.navigate('Main', {
+      screen: 'Messages',
+      params: {
+        screen: 'Chat',
+        params: {
+          conversationId: data.conversationId,
+          otherUserId: data.otherUserId ?? '',
+          otherUserName: data.otherUserName ?? '',
+          otherUserPhoto: data.otherUserPhoto ?? null,
+          listingTitle: data.listingTitle ?? '',
+        },
+      },
+    });
+  } else if (data.listingId) {
+    // Favori ve kayitli arama bildirimleri sadece listingId taniyor -
+    // bunlara dokununca ilgili ilana gitmesi lazim, oncesinde hicbir
+    // yere gitmiyordu.
+    navigationRef.navigate('Main', {
+      screen: 'HomeTab',
+      params: {
+        screen: 'ListingDetail',
+        params: { listingId: data.listingId },
+      },
+    });
+  }
+}
+
 function ThemedApp() {
   const { isDark, colors } = useTheme();
+  // Bildirime dokunup uygulama SOGUK baslatildiginda (kapaliyken), bu
+  // dinleyici abone olmadan once (hatta NavigationContainer hic mount
+  // olmadan once - RootNavigator auth yuklenirken baska bir agac (loading
+  // View) donduruyor, "Main" ekrani henuz navigator'e kayitli bile degil)
+  // yanit zaten olusmus olabiliyordu - bu yuzden navigasyon hazir olana
+  // kadar bekleyip (NavigationContainer'in onReady'si) SONRA isliyoruz.
+  // Bunu atlarsak navigate('Main', ...) sessizce basarisiz oluyor ve
+  // kullanici mesaj yerine ana sayfada kaliyordu.
+  const pendingNotificationData = useRef<NotificationNavData | null>(null);
+  const isNavReady = useRef(false);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as
-        | {
-            conversationId?: string;
-            otherUserId?: string;
-            otherUserName?: string;
-            otherUserPhoto?: string | null;
-            listingTitle?: string;
-            listingId?: string;
-          }
-        | undefined;
-      if (!data || !navigationRef.isReady()) return;
-
-      if (data.conversationId) {
-        navigationRef.navigate('Main', {
-          screen: 'Messages',
-          params: {
-            screen: 'Chat',
-            params: {
-              conversationId: data.conversationId,
-              otherUserId: data.otherUserId ?? '',
-              otherUserName: data.otherUserName ?? '',
-              otherUserPhoto: data.otherUserPhoto ?? null,
-              listingTitle: data.listingTitle ?? '',
-            },
-          },
-        });
-      } else if (data.listingId) {
-        // Favori ve kayitli arama bildirimleri sadece listingId taniyor -
-        // bunlara dokununca ilgili ilana gitmesi lazim, oncesinde hicbir
-        // yere gitmiyordu.
-        navigationRef.navigate('Main', {
-          screen: 'HomeTab',
-          params: {
-            screen: 'ListingDetail',
-            params: { listingId: data.listingId },
-          },
-        });
+    function handleResponse(response: Notifications.NotificationResponse) {
+      const data = response.notification.request.content.data as NotificationNavData | undefined;
+      if (!data) return;
+      if (isNavReady.current) {
+        navigateFromNotificationData(data);
+      } else {
+        pendingNotificationData.current = data;
       }
+    }
+
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
     });
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
     return () => subscription.remove();
   }, []);
 
@@ -80,7 +102,18 @@ function ThemedApp() {
   };
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      onReady={() => {
+        isNavReady.current = true;
+        if (pendingNotificationData.current) {
+          const data = pendingNotificationData.current;
+          pendingNotificationData.current = null;
+          navigateFromNotificationData(data);
+        }
+      }}
+    >
       <AppAlertProvider>
         <RootNavigator />
       </AppAlertProvider>

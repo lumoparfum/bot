@@ -72,6 +72,12 @@ function listingToMeiliDoc(id, listing) {
     condition: listing.condition ?? '',
     price: listing.price ?? 0,
     locationLabel: listing.location?.label ?? '',
+    // Sehir-sadece filtresi (radius secilmedigi "Tumu" durumu) icin ayri bir
+    // alan: locationLabel "Ilce, Sehir" gibi tam adresi tutuyor, istemci
+    // tarafinda da AYNI mantikla (son virgulden sonraki parca) hesaplanan bu
+    // deger olmadan `locationLabel = "Bafra"` gibi bir esitlik filtresi,
+    // deger "Bafra, Bafra" oldugu icin HICBIR ZAMAN eslesmiyordu.
+    city: (listing.location?.label ?? '').split(',').pop()?.trim() ?? '',
     sellerId: listing.sellerId ?? '',
     sellerName: listing.sellerName ?? '',
     sellerPhotoURL: listing.sellerPhotoURL ?? null,
