@@ -45,7 +45,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Stop82'nin ilanına fotoğraf ekleyebilmesi için galerine erişmesi gerekiyor."
+          "photosPermission": "Stop82'nin ilanına fotoğraf ekleyebilmesi için galerine erişmesi gerekiyor.",
+          "cameraPermission": "Stop82'nin ilanına doğrudan fotoğraf çekebilmen için kameraya erişmesi gerekiyor."
         }
       ],
       "expo-web-browser",

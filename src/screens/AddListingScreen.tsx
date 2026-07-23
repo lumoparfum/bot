@@ -149,7 +149,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
     setAttributeValues(nextAttributes);
   };
 
-  const handlePickPhotos = async () => {
+  const handlePickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       showAlert('İzin gerekli', 'Fotoğraf ekleyebilmek için galeri erişimine izin ver.');
@@ -172,6 +172,35 @@ export default function AddListingScreen({ navigation, route }: Props) {
         ...result.assets.map((asset) => ({ id: asset.uri, kind: 'new' as const, uri: asset.uri })),
       ]);
     }
+  };
+
+  const handleTakePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('İzin gerekli', 'Fotoğraf çekebilmek için kamera erişimine izin ver.');
+      return;
+    }
+    if (totalPhotoCount >= MAX_PHOTOS) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setPhotoItems((prev) => [
+        ...prev,
+        ...result.assets.map((asset) => ({ id: asset.uri, kind: 'new' as const, uri: asset.uri })),
+      ]);
+    }
+  };
+
+  const handleAddPhoto = () => {
+    showAlert('Fotoğraf Ekle', undefined, [
+      { text: 'Fotoğraf Çek', onPress: handleTakePhoto },
+      { text: 'Galeriden Seç', onPress: handlePickFromLibrary },
+      { text: 'Vazgeç', style: 'cancel' },
+    ]);
   };
 
   const removePhoto = (id: string) => {
@@ -354,7 +383,7 @@ export default function AddListingScreen({ navigation, route }: Props) {
               </Pressable>
             ))}
             {totalPhotoCount < MAX_PHOTOS && (
-              <Pressable style={styles.addPhotoTile} onPress={handlePickPhotos}>
+              <Pressable style={styles.addPhotoTile} onPress={handleAddPhoto}>
                 <Ionicons name="camera-outline" size={22} color={colors.textMuted} />
                 <Text style={styles.addPhotoText}>Ekle</Text>
               </Pressable>
