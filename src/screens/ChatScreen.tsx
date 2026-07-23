@@ -291,13 +291,17 @@ export default function ChatScreen({ route, navigation }: Props) {
                             style={styles.offerDeclineButton}
                             onPress={() => handleRespondToOffer(item, 'declined')}
                           >
-                            <Text style={styles.offerDeclineText}>Reddet</Text>
+                            <Text style={styles.offerDeclineText} numberOfLines={1} adjustsFontSizeToFit>
+                              Reddet
+                            </Text>
                           </Pressable>
                           <Pressable
                             style={styles.offerAcceptButton}
                             onPress={() => handleRespondToOffer(item, 'accepted')}
                           >
-                            <Text style={styles.offerAcceptText}>Kabul Et</Text>
+                            <Text style={styles.offerAcceptText} numberOfLines={1} adjustsFontSizeToFit>
+                              Kabul Et
+                            </Text>
                           </Pressable>
                         </View>
                         <Pressable

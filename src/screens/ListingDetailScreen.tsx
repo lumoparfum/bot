@@ -25,7 +25,7 @@ import { FullscreenImageViewer } from '../components/FullscreenImageViewer';
 import { IconButton } from '../components/IconButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ReportModal } from '../components/ReportModal';
-import { radius, shadows, spacing, typography, type ColorPalette } from '../constants/theme';
+import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatPrice, formatRelativeDate } from '../utils/format';
 import {
@@ -671,7 +671,11 @@ function createStyles(colors: ColorPalette) {
       paddingTop: spacing.md,
       borderTopWidth: 1,
       borderTopColor: colors.divider,
-      ...shadows.raised,
+      // Eskiden buradaki buyuk/yayilan "raised" golge (kartlar/modal'lar icin
+      // tasarlanmis) bu sabit alt barı, uzerindeki icerikten kopuk, havada
+      // asili bir kart gibi gosteriyordu. Ust kenarlik zaten ayrimi net
+      // yapiyor - ekstra golgeye gerek yok, boylece bar ekrana yapisik/sabit
+      // duruyor.
     },
     soldBar: {
       flexDirection: 'row',

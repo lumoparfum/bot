@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { radius, spacing, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { TURKISH_CITIES, reverseGeocodeLabel, requestAndGetLocation, type City } from '../utils/location';
+import { TURKISH_DISTRICTS } from '../utils/turkishDistricts';
 import type { ListingLocation } from '../types/listing';
 
 type Props = {
@@ -32,7 +33,7 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [district, setDistrict] = useState('');
+  const [districtSearch, setDistrictSearch] = useState('');
 
   const filteredCities = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
@@ -40,10 +41,21 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
     return TURKISH_CITIES.filter((city) => city.name.toLocaleLowerCase('tr-TR').includes(q));
   }, [search]);
 
+  // Ilce artik serbest yazi degil, sabit listeden seciliyor - kullanici
+  // "Atakum" yerine "atkm" gibi tutarsiz/hatali yazip veri kirliligi
+  // yaratamiyor, ayrica sehir filtresiyle ayni tutarlilikta.
+  const districtsForCity = selectedCity ? TURKISH_DISTRICTS[selectedCity.name] ?? [] : [];
+  const filteredDistricts = useMemo(() => {
+    const q = districtSearch.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return districtsForCity;
+    return districtsForCity.filter((d) => d.toLocaleLowerCase('tr-TR').includes(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [districtSearch, selectedCity]);
+
   const reset = () => {
     setSearch('');
     setSelectedCity(null);
-    setDistrict('');
+    setDistrictSearch('');
     setError(null);
   };
 
@@ -71,9 +83,9 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
     }
   };
 
-  const handleConfirmCity = () => {
+  const handleSelectDistrict = (districtName: string | null) => {
     if (!selectedCity) return;
-    const label = district.trim() ? `${district.trim()}, ${selectedCity.name}` : selectedCity.name;
+    const label = districtName ? `${districtName}, ${selectedCity.name}` : selectedCity.name;
     onSelect({ label, latitude: selectedCity.latitude, longitude: selectedCity.longitude });
     handleClose();
   };
@@ -98,17 +110,36 @@ export function LocationPickerModal({ visible, onClose, onSelect }: Props) {
               </View>
 
               <Text style={styles.sectionLabel}>İlçe (opsiyonel)</Text>
-              <TextInput
-                style={styles.districtInput}
-                placeholder="Örn. Bafra, Kadıköy..."
-                placeholderTextColor={colors.textFaint}
-                value={district}
-                onChangeText={setDistrict}
-                autoFocus
+              <View style={styles.searchRow}>
+                <Ionicons name="search" size={16} color={colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="İlçe ara..."
+                  placeholderTextColor={colors.textFaint}
+                  value={districtSearch}
+                  onChangeText={setDistrictSearch}
+                  autoFocus
+                />
+              </View>
+
+              <FlatList
+                data={filteredDistricts}
+                keyExtractor={(item) => item}
+                keyboardShouldPersistTaps="handled"
+                ListHeaderComponent={
+                  <Pressable style={styles.cityRow} onPress={() => handleSelectDistrict(null)}>
+                    <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.cityText}>Sadece {selectedCity.name} (ilçe belirtme)</Text>
+                  </Pressable>
+                }
+                renderItem={({ item }) => (
+                  <Pressable style={styles.cityRow} onPress={() => handleSelectDistrict(item)}>
+                    <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.cityText}>{item}</Text>
+                  </Pressable>
+                )}
+                style={styles.cityList}
               />
-              <Pressable style={styles.gpsButton} onPress={handleConfirmCity}>
-                <Text style={styles.gpsButtonText}>Devam Et</Text>
-              </Pressable>
             </>
           ) : (
             <>
@@ -232,16 +263,6 @@ function createStyles(colors: ColorPalette) {
       fontSize: 15,
       color: colors.text,
       padding: 0,
-    },
-    districtInput: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      fontSize: 16,
-      color: colors.text,
-      marginBottom: spacing.md,
     },
     cityList: {
       marginTop: spacing.xs,
