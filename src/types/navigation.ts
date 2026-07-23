@@ -7,6 +7,18 @@ export type HomeStackParamList = {
   Notifications: undefined;
   SavedSearches: undefined;
   SwipeDiscover: undefined;
+  // Letgo'daki gibi: bir ilandan/bildirimden mesaja girince Mesajlar
+  // sekmesine ATLAMAK yerine (ki bu "sekmeler arasi karisiklik" hissi
+  // veriyordu, geri tusu nereye donecegi belirsizlesiyordu) dogrudan bu
+  // stack'in ustune push ediliyor - geri tusu tam geldigin yere (ilana,
+  // sonra ana sayfaya) doner, digerlerine hic dokunmaz.
+  Chat: {
+    conversationId: string;
+    otherUserId: string;
+    otherUserName: string;
+    otherUserPhoto: string | null;
+    listingTitle: string;
+  };
 };
 
 export type ProfileStackParamList = {

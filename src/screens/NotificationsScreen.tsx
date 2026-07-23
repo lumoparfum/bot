@@ -49,25 +49,14 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (!notification.read) markNotificationRead(user.uid, notification.id).catch(() => {});
 
     if (notification.type === 'message' && notification.conversationId) {
-      // ListingDetailScreen.handleMessage'daki ayni sebep: iki ayri ardisik
-      // navigate cagrisi yaris durumuna yol acabiliyordu - hedef stack'in
-      // tum route dizisini tek, atomik bir cagrida veriyoruz.
-      navigation.navigate('Messages', {
-        state: {
-          routes: [
-            { name: 'ChatList' },
-            {
-              name: 'Chat',
-              params: {
-                conversationId: notification.conversationId,
-                otherUserId: notification.fromUserId ?? '',
-                otherUserName: notification.fromUserName,
-                otherUserPhoto: notification.fromUserPhoto,
-                listingTitle: '',
-              },
-            },
-          ],
-        },
+      // ListingDetailScreen.handleMessage'daki ayni sebep/cozum: sekme
+      // atlamak yerine Chat, bu ekranin oldugu stack'in ustune push ediliyor.
+      navigation.navigate('Chat', {
+        conversationId: notification.conversationId,
+        otherUserId: notification.fromUserId ?? '',
+        otherUserName: notification.fromUserName,
+        otherUserPhoto: notification.fromUserPhoto,
+        listingTitle: '',
       });
     } else if (notification.listingId) {
       navigation.navigate('ListingDetail', { listingId: notification.listingId });

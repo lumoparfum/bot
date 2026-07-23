@@ -137,31 +137,17 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
         buyerName: user.displayName ?? 'Stop82 Kullanıcısı',
         buyerPhotoURL: user.photoURL,
       });
-      // Messages tab'ina dogrudan {screen:'Chat'} ile atlamak o stack'i
-      // SADECE Chat ile baslatiyordu (altinda ChatList olmadan) - kenardan
-      // geri kaydirma calismiyor, geri tusu sekmeyi tamamen terk ediyor,
-      // Mesajlar'a tekrar girilince hep Chat acik kaliyordu. Once ChatList'e
-      // sonra ayrica Chat'e navigate etmek (iki ayri, ardisik cagri) React
-      // Navigation'da yaris durumuna (state henuz commit olmadan ikinci
-      // cagrinin calismasi) yol acip bazen hala islemiyordu - bunun yerine
-      // hedef stack'in TUM route dizisini TEK bir navigate cagrisinda,
-      // atomik sekilde veriyoruz.
-      navigation.navigate('Messages', {
-        state: {
-          routes: [
-            { name: 'ChatList' },
-            {
-              name: 'Chat',
-              params: {
-                conversationId,
-                otherUserId: listing.sellerId,
-                otherUserName: listing.sellerName,
-                otherUserPhoto: listing.sellerPhotoURL,
-                listingTitle: listing.title,
-              },
-            },
-          ],
-        },
+      // Letgo'daki gibi: Mesajlar sekmesine ATLAMAK yerine (ki bu "sekmeler
+      // arasi karisiklik" hissi veriyordu - geri tusu bazen ilana degil
+      // sohbet listesine donuyordu) Chat, ayni stack'in (bu ekranin oldugu
+      // yigin) ustune dogrudan push ediliyor. Boylece geri tusu her zaman
+      // tam geldigin sirayla (Chat -> Ilan -> Ana Sayfa) geri gider.
+      navigation.navigate('Chat', {
+        conversationId,
+        otherUserId: listing.sellerId,
+        otherUserName: listing.sellerName,
+        otherUserPhoto: listing.sellerPhotoURL,
+        listingTitle: listing.title,
       });
     } catch (error: any) {
       if (error?.code === 'permission-denied') {
