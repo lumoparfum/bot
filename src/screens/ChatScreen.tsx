@@ -44,6 +44,19 @@ const QUICK_REPLIES = [
   'Uygun, alıyorum',
 ];
 
+// Karsi taraf hic yanit vermeden art arda spam gibi mesaj/teklif atilmasin diye -
+// karsi taraf bir kere yanit verince (son mesaj onun olunca) sayac otomatik sifirlanir.
+const MAX_CONSECUTIVE_UNANSWERED = 3;
+
+function countConsecutiveFromMe(messages: ChatMessage[], myUid: string): number {
+  let count = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].senderId !== myUid) break;
+    count++;
+  }
+  return count;
+}
+
 type Props = CompositeScreenProps<
   NativeStackScreenProps<MessagesStackParamList, 'Chat'>,
   BottomTabScreenProps<MainTabParamList>
@@ -96,9 +109,22 @@ export default function ChatScreen({ route, navigation }: Props) {
     });
   };
 
+  // Karsi taraf yanit vermeden ust uste MAX_CONSECUTIVE_UNANSWERED'den fazla
+  // mesaj/teklif gonderilemez - true donerse uyari zaten gosterilmis demektir.
+  const blockedBySpamLimit = () => {
+    if (!user) return false;
+    if (countConsecutiveFromMe(messages, user.uid) < MAX_CONSECUTIVE_UNANSWERED) return false;
+    showAlert(
+      'Yanıt Bekleniyor',
+      `${otherUserName} henüz yanıt vermedi. Yanıt gelmeden art arda daha fazla mesaj gönderemezsin.`
+    );
+    return true;
+  };
+
   const handleSend = async (overrideText?: string) => {
     const value = (overrideText ?? text).trim();
     if (!user || !value || sending) return;
+    if (blockedBySpamLimit()) return;
     setText('');
     setSending(true);
     try {
@@ -148,7 +174,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   };
 
   const handleSendOffer = async (amount: number) => {
-    if (!user) return;
+    if (!user || blockedBySpamLimit()) return;
     await sendOffer(conversationId, user.uid, otherUserId, amount);
   };
 
@@ -159,7 +185,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   };
 
   const handleSendCounterOffer = async (amount: number) => {
-    if (!user || !counterOfferTarget) return;
+    if (!user || !counterOfferTarget || blockedBySpamLimit()) return;
     await sendCounterOffer(conversationId, counterOfferTarget.id, user.uid, otherUserId, amount);
   };
 
