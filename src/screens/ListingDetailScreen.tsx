@@ -229,8 +229,14 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   };
 
   const handleShare = () => {
+    // Henuz ilana ozel bir web sayfamiz / universal link kurulumumuz yok -
+    // su an icin tanitim sitesine yonlendiriyoruz. Tiklayinca dogrudan bu
+    // ilana/uygulamaya acilan gercek bir link icin Universal Links (iOS) /
+    // App Links (Android) kurulmasi lazim, bu da yeni bir native build
+    // gerektiriyor.
     Share.share({
-      message: `${listing.title} - ${formatPrice(listing.price)}\nStop82'de incele!`,
+      message: `${listing.title} - ${formatPrice(listing.price)}\nStop82'de incele: https://stop82.com`,
+      url: 'https://stop82.com',
     }).catch(() => {});
   };
 

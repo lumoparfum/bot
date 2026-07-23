@@ -8,6 +8,7 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import * as Updates from 'expo-updates';
 import { AppAlertProvider } from './src/components/AppAlert';
 import { AuthProvider } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
@@ -89,6 +90,17 @@ function ThemedApp() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // OTA guncellemeler varsayilan olarak bir sonraki acilista devreye
+    // giriyor - kullaniciya "uygulamayi 2 kere ac" dedirtmemek icin, varsa
+    // yeni surumu indirip bu oturumda hemen uyguluyoruz.
+    if (__DEV__) return;
+    Updates.checkForUpdateAsync()
+      .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : null))
+      .then((fetched) => (fetched ? Updates.reloadAsync() : null))
+      .catch(() => {});
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

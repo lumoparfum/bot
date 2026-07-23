@@ -365,6 +365,8 @@ export default function ListingListScreen({ navigation }: Props) {
     setMaxPrice('');
     setSelectedRadius(null);
     setLocationFilterActive(false);
+    setLocationLabel(null);
+    setUserLocation(null);
     setSelectedCondition(null);
     setSelectedAttrFilters({});
   };

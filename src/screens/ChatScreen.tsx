@@ -46,7 +46,7 @@ const QUICK_REPLIES = [
 
 // Karsi taraf hic yanit vermeden art arda spam gibi mesaj/teklif atilmasin diye -
 // karsi taraf bir kere yanit verince (son mesaj onun olunca) sayac otomatik sifirlanir.
-const MAX_CONSECUTIVE_UNANSWERED = 3;
+const MAX_CONSECUTIVE_UNANSWERED = 7;
 
 function countConsecutiveFromMe(messages: ChatMessage[], myUid: string): number {
   let count = 0;

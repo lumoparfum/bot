@@ -8,7 +8,7 @@ import { db } from './firebase';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
@@ -22,6 +22,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Stop82',
       importance: Notifications.AndroidImportance.DEFAULT,
+      sound: 'default',
+      vibrationPattern: [0, 250, 250, 250],
     });
   }
 

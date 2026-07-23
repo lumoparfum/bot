@@ -12,8 +12,10 @@ export function formatNumberInput(digits: string): string {
 
 export function formatRelativeDate(millis: number): string {
   const diffMs = Date.now() - millis;
+  const diffMinutes = Math.round(diffMs / (1000 * 60));
+  if (diffMinutes < 1) return 'Az önce';
+  if (diffMinutes < 60) return `${diffMinutes} dakika önce`;
   const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-  if (diffHours < 1) return 'Az önce';
   if (diffHours < 24) return `${diffHours} saat önce`;
   const diffDays = Math.round(diffHours / 24);
   if (diffDays === 1) return 'Dün';
