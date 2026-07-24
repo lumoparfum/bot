@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/ilan/:id", "destination": "/api/ilan/:id" }
+  ]
+}

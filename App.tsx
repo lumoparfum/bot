@@ -5,6 +5,7 @@ import {
   DefaultTheme,
   NavigationContainer,
   createNavigationContainerRef,
+  type LinkingOptions,
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -58,6 +59,31 @@ function navigateFromNotificationData(data: NotificationNavData) {
   }
 }
 
+// "Uygulamada Ac" linkleri icin (bkz. web/api/ilan/[id].js): stop82://ilan/123
+// seklinde bir link acilinca dogrudan o ilana gitsin diye. https://stop82.com
+// prefix'i de simdiden eklendi - gercek Universal Links (Associated Domains)
+// henuz native tarafta kurulmadigi icin su an bu prefix'ten gelen tiklamalari
+// isletim sistemi otomatik uygulamaya yonlendirmiyor, ama JS tarafi (bu
+// linking config) hazir - native yetenek eklenince ekstra kod degisikligi
+// gerekmeyecek.
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['stop82://', 'https://stop82.com'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          HomeTab: {
+            screens: {
+              ListingDetail: 'ilan/:listingId',
+            },
+          },
+        },
+      },
+      Auth: 'auth',
+    },
+  },
+};
+
 function ThemedApp() {
   const { isDark, colors } = useTheme();
   // Bildirime dokunup uygulama SOGUK baslatildiginda (kapaliyken), bu
@@ -105,6 +131,7 @@ function ThemedApp() {
     <NavigationContainer
       ref={navigationRef}
       theme={navigationTheme}
+      linking={linking}
       onReady={() => {
         isNavReady.current = true;
         if (pendingNotificationData.current) {

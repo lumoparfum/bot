@@ -229,14 +229,16 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
   };
 
   const handleShare = () => {
-    // Henuz ilana ozel bir web sayfamiz / universal link kurulumumuz yok -
-    // su an icin tanitim sitesine yonlendiriyoruz. Tiklayinca dogrudan bu
-    // ilana/uygulamaya acilan gercek bir link icin Universal Links (iOS) /
-    // App Links (Android) kurulmasi lazim, bu da yeni bir native build
-    // gerektiriyor.
+    // web/api/ilan/[id].js bu linki karsiliyor: gercek ilan fotografi/baslik/
+    // fiyatiyla dogru og: etiketleri donduruyor (WhatsApp/Facebook onizlemesi
+    // dogru gorunsun diye), sayfada "Uygulamada Ac" butonu var. Linkin
+    // kendisi tiklaninca DOGRUDAN uygulamayi acmasi (Universal Links) henuz
+    // yok - o native bir build gerektiriyor, su an icin bir ek tiklama ile
+    // (o sayfadaki buton) uygulamaya geciliyor.
+    const url = `https://stop82.com/ilan/${listing.id}`;
     Share.share({
-      message: `${listing.title} - ${formatPrice(listing.price)}\nStop82'de incele: https://stop82.com`,
-      url: 'https://stop82.com',
+      message: `${listing.title} - ${formatPrice(listing.price)}\n${url}`,
+      url,
     }).catch(() => {});
   };
 
