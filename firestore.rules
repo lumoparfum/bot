@@ -9,15 +9,16 @@ service cloud.firestore {
       // baskalarinin degerlendirmesi ya da Cloud Functions tarafindan
       // (Admin SDK, bu kurallari zaten atlar) hesaplanir. Aksi halde
       // teknik bilgisi olan biri Firestore'a dogrudan yazip kendine sahte
-      // 5 yildiz veya sahte "1 yildir uye" rozeti verebilirdi.
-      allow update: if request.auth != null && (
-        (request.auth.uid == userId
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-               'ratingSum', 'ratingCount', 'createdAt',
-               'contactedCount', 'responseCount', 'responseTimeTotalMinutes'
-             ])) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ratingSum', 'ratingCount'])
-      );
+      // 5 yildiz veya sahte "1 yildir uye" rozeti verebilirdi. ratingSum/
+      // ratingCount istemciden HICBIR SEKILDE yazilamaz - reviews alt
+      // koleksiyonuna dusen her yazimda functions/index.js'teki
+      // onReviewWritten (Admin SDK) tarafindan yeniden hesaplanir.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+             'ratingSum', 'ratingCount', 'createdAt',
+             'contactedCount', 'responseCount', 'responseTimeTotalMinutes'
+           ]);
 
       match /favorites/{listingId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -63,11 +64,15 @@ service cloud.firestore {
       // Ilan sahibi her seyi guncelleyebilir - "favoriteCount" haric, o sadece
       // Cloud Functions tarafindan hesaplanir (aksi halde satici kendi
       // ilanina sahte "23 kisi favoriledi" sosyal kaniti yazabilirdi).
-      // Baskalari sadece goruntulenme sayacini artirabilir (ilana her girildiginde +1).
+      // Baskalari sadece goruntulenme sayacini tam olarak birer birer
+      // artirabilir (rastgele bir sayiya "set" edip sahte "50000 goruntulenme"
+      // sosyal kaniti yaratamasinlar diye - client zaten sadece increment(1)
+      // kullaniyor, bkz. src/services/firestore.ts).
       allow update: if request.auth != null && (
         (resource.data.sellerId == request.auth.uid
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['favoriteCount'])) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == resource.data.viewCount + 1)
       );
 
       match /comments/{commentId} {
@@ -75,12 +80,15 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
         // Yorumu yazan kendi yorumunu silebilir; ilan sahibi ise sadece
         // "hidden" alanini true yapabilir (kanit kalsin diye tam silemez).
+        // Uygulamada yorum "duzenleme" ozelligi yok (bkz. src/services/
+        // comments.ts - tek update cagrisi seller'in hideComment'i), o yuzden
+        // yazarin kendi yorumunu guncelleme hakki yok - aksi halde satici bir
+        // yorumu gizledikten sonra yazar "hidden"i geri false yapabilir ya da
+        // authorId'yi baskasina cevirip yorumu ona mal edebilirdi.
         allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-        allow update: if request.auth != null && (
-          request.auth.uid == resource.data.authorId ||
-          (get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']))
-        );
+        allow update: if request.auth != null
+          && get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']);
       }
     }
 

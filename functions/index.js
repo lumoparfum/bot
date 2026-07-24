@@ -1,4 +1,4 @@
-const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
@@ -431,6 +431,29 @@ exports.onUserProfileUpdated = onDocumentUpdated(
         docSnap.ref.update({ buyerName: newName, buyerPhotoURL: newPhoto }).catch(() => {})
       )
     );
+  }
+);
+
+// ratingSum/ratingCount, kullanicinin toplam puanini istemciden dogrudan
+// yazilamayacak sekilde (bkz. firestore.rules) sadece burada, Admin SDK ile
+// yeniden hesaplanir - aksi halde teknik bilgisi olan biri kendi
+// hesabinin/arkadasinin puanini dogrudan Firestore'a yazip sahte 5 yildiz
+// verebilirdi. Tum reviews alt koleksiyonu yeniden toplanip yazilir, boylece
+// tekil artis/azalis mantigindaki olasi sapmalar (race condition vb.) de
+// kendiliginden duzelir.
+exports.onReviewWritten = onDocumentWritten(
+  { document: 'users/{userId}/reviews/{raterId}', region: REGION },
+  async (event) => {
+    const { userId } = event.params;
+    const reviewsSnap = await db.collection('users').doc(userId).collection('reviews').get();
+    let ratingSum = 0;
+    reviewsSnap.forEach((docSnap) => {
+      ratingSum += docSnap.data().rating ?? 0;
+    });
+    await db
+      .doc(`users/${userId}`)
+      .update({ ratingSum, ratingCount: reviewsSnap.size })
+      .catch(() => {});
   }
 );
 

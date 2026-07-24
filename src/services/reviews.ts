@@ -6,8 +6,8 @@ import {
   getDocs,
   orderBy,
   query,
-  runTransaction,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { db } from './firebase';
@@ -66,32 +66,21 @@ export async function submitReview(params: {
   rating: number;
   comment: string;
 }): Promise<void> {
-  const userRef = doc(db, 'users', params.ratedUserId);
   const reviewRef = doc(db, 'users', params.ratedUserId, 'reviews', params.raterId);
 
-  await runTransaction(db, async (tx) => {
-    const userSnap = await tx.get(userRef);
-    const reviewSnap = await tx.get(reviewRef);
-
-    const prevRating = reviewSnap.exists() ? (reviewSnap.data().rating as number) : 0;
-    const currentSum = userSnap.data()?.ratingSum ?? 0;
-    const currentCount = userSnap.data()?.ratingCount ?? 0;
-
-    const newSum = currentSum - prevRating + params.rating;
-    const newCount = reviewSnap.exists() ? currentCount : currentCount + 1;
-
-    tx.set(
-      reviewRef,
-      {
-        raterId: params.raterId,
-        raterName: params.raterName,
-        raterPhotoURL: params.raterPhotoURL,
-        rating: params.rating,
-        comment: params.comment.trim(),
-        createdAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-    tx.set(userRef, { ratingSum: newSum, ratingCount: newCount }, { merge: true });
-  });
+  // ratingSum/ratingCount burada yazilmiyor - Cloud Functions (onReviewWritten,
+  // Admin SDK ile) tum reviews alt koleksiyonunu yeniden toplayip yaziyor. Boylece
+  // istemci puan toplamini dogrudan Firestore'a yazamiyor (bkz. firestore.rules).
+  await setDoc(
+    reviewRef,
+    {
+      raterId: params.raterId,
+      raterName: params.raterName,
+      raterPhotoURL: params.raterPhotoURL,
+      rating: params.rating,
+      comment: params.comment.trim(),
+      createdAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
