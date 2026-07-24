@@ -128,6 +128,14 @@ module.exports = async function handler(req, res) {
   const { id } = req.query;
   const canonicalUrl = `https://stop82.com/ilan/${encodeURIComponent(id)}`;
 
+  // Ayni ilan art arda paylasilinca/goruntulenince (ozellikle WhatsApp/
+  // Facebook gibi onizleme botlari her tiklamada linki yeniden taradiginda)
+  // her seferinde Meilisearch'e sorup Firebase Storage'dan resmi tekrar
+  // indirmemek icin, Vercel'in CDN'i bu sayfayi birkac dakika onbelleğe
+  // alsin diye. Ilan verisi saniye saniye degismiyor, kisa bir gecikme
+  // sorun degil.
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600');
+
   let listing = null;
   try {
     const meiliRes = await fetch(`${MEILI_HOST}/indexes/listings/search`, {
