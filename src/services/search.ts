@@ -25,6 +25,7 @@ export type SearchListingsParams = {
   userLocation?: { latitude: number; longitude: number } | null;
   radiusKm?: number | null;
   cityLabel?: string | null;
+  createdAfter?: number | null;
   excludeSellerIds?: string[];
   page: number;
   hitsPerPage: number;
@@ -47,6 +48,7 @@ export async function searchListings(params: SearchListingsParams): Promise<Sear
   if (params.condition) filters.push(`condition = "${escapeFilterValue(params.condition)}"`);
   if (params.minPrice != null) filters.push(`price >= ${params.minPrice}`);
   if (params.maxPrice != null) filters.push(`price <= ${params.maxPrice}`);
+  if (params.createdAfter != null) filters.push(`createdAt >= ${params.createdAfter}`);
   if (params.excludeSellerIds && params.excludeSellerIds.length > 0) {
     params.excludeSellerIds.forEach((id) => filters.push(`sellerId != "${escapeFilterValue(id)}"`));
   }

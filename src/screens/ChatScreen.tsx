@@ -40,16 +40,21 @@ import type { MainTabParamList, MessagesStackParamList } from '../types/navigati
 
 // Alici ve satici icin ayri hazir cevaplar - eskiden tek liste herkese
 // gosteriliyordu, satici kendi ilanina "hala satılık mı?" diye
-// sorabiliyormus gibi goruyordu.
+// sorabiliyormus gibi goruyordu. Letgo'nun "auto_answer" setiyle
+// karsilastirip zenginlestirildi (bkz. bu oturumdaki APK incelemesi).
 const BUYER_QUICK_REPLIES = [
   'Hâlâ satılık mı?',
   'Son fiyat nedir?',
+  'Fiyatta pazarlık payı var mı?',
+  'Ne durumda?',
   'Nerede buluşabiliriz?',
   'Uygun, alıyorum',
 ];
 const SELLER_QUICK_REPLIES = [
   'Evet, hâlâ satılık',
   'Biraz pazarlık payı var',
+  'Pazarlık payı yok',
+  'Teklifin nedir?',
   'Nerede buluşabiliriz?',
   'Bugün müsaitim',
 ];

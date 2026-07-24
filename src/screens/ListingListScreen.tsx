@@ -59,6 +59,28 @@ const SORT_LABELS: Record<SortOption, string> = {
   distance: 'Yakınıma Göre',
 };
 
+// Letgo'daki gibi ilan tarihine gore filtreleme - "hours" degeri secilince
+// createdAt >= (su an - hours saat) filtresine ceviriliyor (bkz. loadPage).
+type DateFilterOption = '24h' | '7d' | '30d';
+const DATE_FILTERS: { key: DateFilterOption; label: string; hours: number }[] = [
+  { key: '24h', label: 'Son 24 saat', hours: 24 },
+  { key: '7d', label: 'Son 7 gün', hours: 24 * 7 },
+  { key: '30d', label: 'Son 30 gün', hours: 24 * 30 },
+];
+
+// Mesafe secenekleri artik ciplak "km" yerine (Letgo'daki gibi) tanidik bir
+// isimle sunuluyor - kullanicinin "25 km ne kadar alan" diye dusunmesine
+// gerek kalmiyor, ama km bilgisi de yaninda kalsin diye parantez icinde
+// tutuluyor. DISTANCE_FILTERS (utils/location.ts) ile ayni siradaki
+// degerlere karsilik gelmeli.
+const DISTANCE_FILTER_LABELS: Record<number, string> = {
+  5: 'Yakınlarda',
+  10: 'Mahallemde',
+  25: 'Şehrimde',
+  50: 'Bölgemde',
+  100: 'Geniş Alan',
+};
+
 type Props = NativeStackScreenProps<HomeStackParamList, 'ListingList'>;
 
 export default function ListingListScreen({ navigation }: Props) {
@@ -128,6 +150,7 @@ export default function ListingListScreen({ navigation }: Props) {
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterOption | null>(null);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const hasActiveFilters =
     sortOption !== 'newest' ||
@@ -135,6 +158,7 @@ export default function ListingListScreen({ navigation }: Props) {
     maxPrice !== '' ||
     locationFilterActive ||
     selectedCondition !== null ||
+    selectedDateFilter !== null ||
     Object.keys(selectedAttrFilters).length > 0;
 
   // Filtrele sayfasi kalabalik gelmesin diye butun bolumler kapali baslar,
@@ -227,6 +251,10 @@ export default function ListingListScreen({ navigation }: Props) {
       const requestId = ++latestRequestId.current;
       try {
         setLoadError(false);
+        const dateFilterHours = selectedDateFilter
+          ? DATE_FILTERS.find((d) => d.key === selectedDateFilter)?.hours
+          : null;
+        const createdAfter = dateFilterHours != null ? Date.now() - dateFilterHours * 3600000 : null;
         const result = await searchListings({
           query,
           category: selectedCategory === ALL ? null : selectedCategory,
@@ -238,6 +266,7 @@ export default function ListingListScreen({ navigation }: Props) {
           userLocation: locationFilterActive ? userLocation : null,
           radiusKm: locationFilterActive ? selectedRadius : null,
           cityLabel,
+          createdAfter,
           excludeSellerIds: Array.from(blockedIds),
           page: pageToLoad,
           hitsPerPage: HITS_PER_PAGE,
@@ -265,6 +294,7 @@ export default function ListingListScreen({ navigation }: Props) {
       minPrice,
       maxPrice,
       sortOption,
+      selectedDateFilter,
       locationFilterActive,
       selectedRadius,
       userLocation,
@@ -387,6 +417,7 @@ export default function ListingListScreen({ navigation }: Props) {
     setSortOption('newest');
     setMinPrice('');
     setMaxPrice('');
+    setSelectedDateFilter(null);
     setSelectedRadius(null);
     setLocationFilterActive(false);
     setLocationLabel(null);
@@ -409,6 +440,58 @@ export default function ListingListScreen({ navigation }: Props) {
           );
     return filtered.map((listing) => ({ listing, distance: listing.distanceKm }));
   }, [hits, selectedAttrFilters]);
+
+  // Letgo'daki gibi: aktif filtreler artik sadece "Filtrele" modalini acinca
+  // degil, liste uzerinde de cip seklinde gorunuyor - hangi filtrenin acik
+  // oldugunu gormek icin modali acmaya gerek kalmiyor, her cip kendi
+  // basina kapatilabiliyor. Kategori/alt kategori burada YOK - onlar zaten
+  // kendi kalici cip satirinda her zaman gorunur durumda.
+  const activeFilterChips = useMemo(() => {
+    const chips: { key: string; label: string; onRemove: () => void }[] = [];
+    if (sortOption !== 'newest') {
+      chips.push({ key: 'sort', label: SORT_LABELS[sortOption], onRemove: () => setSortOption('newest') });
+    }
+    if (selectedDateFilter) {
+      const opt = DATE_FILTERS.find((d) => d.key === selectedDateFilter);
+      if (opt) chips.push({ key: 'date', label: opt.label, onRemove: () => setSelectedDateFilter(null) });
+    }
+    if (minPrice !== '' || maxPrice !== '') {
+      const label = `${minPrice ? formatNumberInput(minPrice) + '₺' : '0₺'} – ${maxPrice ? formatNumberInput(maxPrice) + '₺' : '∞'}`;
+      chips.push({
+        key: 'price',
+        label,
+        onRemove: () => {
+          setMinPrice('');
+          setMaxPrice('');
+        },
+      });
+    }
+    if (locationFilterActive) {
+      const label =
+        selectedRadius !== null
+          ? (DISTANCE_FILTER_LABELS[selectedRadius] ?? `${selectedRadius} km`)
+          : (locationLabel ?? 'Konum');
+      chips.push({ key: 'location', label, onRemove: handleClearLocation });
+    }
+    if (selectedCondition) {
+      chips.push({ key: 'condition', label: selectedCondition, onRemove: () => setSelectedCondition(null) });
+    }
+    Object.entries(selectedAttrFilters).forEach(([key, value]) => {
+      chips.push({ key: `attr-${key}`, label: value, onRemove: () => handleToggleAttrFilter(key, value) });
+    });
+    return chips;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    sortOption,
+    selectedDateFilter,
+    minPrice,
+    maxPrice,
+    locationFilterActive,
+    selectedRadius,
+    locationLabel,
+    selectedCondition,
+    selectedAttrFilters,
+  ]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -512,6 +595,23 @@ export default function ListingListScreen({ navigation }: Props) {
                 ))}
               </ScrollView>
             )}
+
+            {activeFilterChips.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.activeFilterRow}
+              >
+                {activeFilterChips.map((chip) => (
+                  <Pressable key={chip.key} style={styles.activeFilterChip} onPress={chip.onRemove}>
+                    <Text style={styles.activeFilterChipText} numberOfLines={1}>
+                      {chip.label}
+                    </Text>
+                    <Ionicons name="close" size={14} color={colors.primaryDark} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
           </View>
         }
         renderItem={({ item }) => (
@@ -588,7 +688,7 @@ export default function ListingListScreen({ navigation }: Props) {
                 {locationFilterActive && !expandedSections.has('location') && (
                   <Text style={styles.filterSectionSummary} numberOfLines={1}>
                     {locationLabel}
-                    {selectedRadius !== null ? ` · ${selectedRadius} km` : ''}
+                    {selectedRadius !== null ? ` · ${DISTANCE_FILTER_LABELS[selectedRadius] ?? `${selectedRadius} km`}` : ''}
                   </Text>
                 )}
                 <Ionicons
@@ -625,9 +725,9 @@ export default function ListingListScreen({ navigation }: Props) {
                   <Text style={styles.locationHint}>
                     {locationFilterActive
                       ? selectedRadius !== null
-                        ? `${selectedRadius} km yarıçapındaki ilanlar gösteriliyor`
+                        ? `${DISTANCE_FILTER_LABELS[selectedRadius] ?? ''} · ${selectedRadius} km yarıçapındaki ilanlar gösteriliyor`
                         : 'Sadece bu şehirdeki ilanlar gösteriliyor'
-                      : 'Bir şehir seçip filtreleyebilir, istersen km ile daraltabilirsin'}
+                      : 'Bir şehir seçip filtreleyebilir, istersen daha da daraltabilirsin'}
                   </Text>
                   <View style={[styles.sortOptions, styles.radiusOptions]}>
                     <CategoryChip
@@ -638,7 +738,7 @@ export default function ListingListScreen({ navigation }: Props) {
                     {DISTANCE_FILTERS.map((km) => (
                       <CategoryChip
                         key={km}
-                        label={`${km} km`}
+                        label={`${DISTANCE_FILTER_LABELS[km] ?? `${km} km`} (${km} km)`}
                         selected={selectedRadius === km}
                         onPress={() => handleRadiusPress(km)}
                       />
@@ -672,6 +772,37 @@ export default function ListingListScreen({ navigation }: Props) {
                         onPress={() => setSortOption(option)}
                       />
                     ))}
+                </View>
+              )}
+
+              <Pressable style={styles.filterSectionHeader} onPress={() => toggleSection('date')}>
+                <Text style={styles.filterSectionHeaderLabel}>İlan Tarihi</Text>
+                {selectedDateFilter && !expandedSections.has('date') && (
+                  <Text style={styles.filterSectionSummary} numberOfLines={1}>
+                    {DATE_FILTERS.find((d) => d.key === selectedDateFilter)?.label}
+                  </Text>
+                )}
+                <Ionicons
+                  name={expandedSections.has('date') ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textFaint}
+                />
+              </Pressable>
+              {expandedSections.has('date') && (
+                <View style={[styles.filterSectionBody, styles.sortOptions]}>
+                  <CategoryChip
+                    label={ALL}
+                    selected={selectedDateFilter === null}
+                    onPress={() => setSelectedDateFilter(null)}
+                  />
+                  {DATE_FILTERS.map((option) => (
+                    <CategoryChip
+                      key={option.key}
+                      label={option.label}
+                      selected={selectedDateFilter === option.key}
+                      onPress={() => setSelectedDateFilter(option.key)}
+                    />
+                  ))}
                 </View>
               )}
 
@@ -855,6 +986,25 @@ function createStyles(colors: ColorPalette) {
     subChipRow: {
       gap: spacing.sm,
       paddingBottom: spacing.sm,
+    },
+    activeFilterRow: {
+      gap: spacing.xs,
+      paddingBottom: spacing.sm,
+    },
+    activeFilterChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: 7,
+    },
+    activeFilterChipText: {
+      ...typography.footnote,
+      fontWeight: '600',
+      color: colors.primaryDark,
+      maxWidth: 160,
     },
     locationRow: {
       flexDirection: 'row',
