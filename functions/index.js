@@ -259,9 +259,18 @@ exports.onFavoriteRemoved = onDocumentDeleted(
   { document: 'users/{userId}/favorites/{listingId}', region: REGION },
   async (event) => {
     const { listingId } = event.params;
+    const listingRef = db.doc(`listings/${listingId}`);
+    // Duz FieldValue.increment(-1) kullanilirsa, Cloud Functions'in "en az
+    // bir kez" teslimat garantisi yuzunden bu fonksiyon retry ile iki kez
+    // calisirsa favoriteCount gercek degerden dusuk/negatif kalabilir.
+    // Transaction icinde 0'in altina dusmeyecek sekilde clamp'liyoruz.
     await db
-      .doc(`listings/${listingId}`)
-      .update({ favoriteCount: FieldValue.increment(-1) })
+      .runTransaction(async (tx) => {
+        const snap = await tx.get(listingRef);
+        if (!snap.exists) return;
+        const current = snap.data().favoriteCount ?? 0;
+        tx.update(listingRef, { favoriteCount: Math.max(0, current - 1) });
+      })
       .catch(() => {});
   }
 );

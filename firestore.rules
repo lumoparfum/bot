@@ -59,18 +59,30 @@ service cloud.firestore {
 
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
+      // Fiyat ust siniri istemcideki (AddListingScreen) MAX_PRICE ile ayni -
+      // aksi halde biri Firestore'a dogrudan yazip anlamsiz/asiri buyuk bir
+      // fiyat girebilirdi (istemci kontrolu API'yi dogrudan cagiran birini
+      // engellemez).
+      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.price is number
+        && request.resource.data.price > 0
+        && request.resource.data.price <= 100000000;
       allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
       // Ilan sahibi her seyi guncelleyebilir - "favoriteCount" haric, o sadece
       // Cloud Functions tarafindan hesaplanir (aksi halde satici kendi
-      // ilanina sahte "23 kisi favoriledi" sosyal kaniti yazabilirdi).
-      // Baskalari sadece goruntulenme sayacini tam olarak birer birer
-      // artirabilir (rastgele bir sayiya "set" edip sahte "50000 goruntulenme"
-      // sosyal kaniti yaratamasinlar diye - client zaten sadece increment(1)
-      // kullaniyor, bkz. src/services/firestore.ts).
+      // ilanina sahte "23 kisi favoriledi" sosyal kaniti yazabilirdi). Fiyat
+      // ve fotograf sayisi (MAX_PHOTOS=4, bkz. AddListingScreen) her
+      // guncellemede de dogrulanir. Baskalari sadece goruntulenme sayacini
+      // tam olarak birer birer artirabilir (rastgele bir sayiya "set" edip
+      // sahte "50000 goruntulenme" sosyal kaniti yaratamasinlar diye - client
+      // zaten sadece increment(1) kullaniyor, bkz. src/services/firestore.ts).
       allow update: if request.auth != null && (
         (resource.data.sellerId == request.auth.uid
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['favoriteCount'])) ||
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['favoriteCount'])
+          && request.resource.data.price is number
+          && request.resource.data.price > 0
+          && request.resource.data.price <= 100000000
+          && request.resource.data.images.size() <= 4) ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
           && request.resource.data.viewCount == resource.data.viewCount + 1)
       );
@@ -104,20 +116,46 @@ service cloud.firestore {
       // etmek icin yapilan getDoc() cagrisina izin verir (getOrCreateConversation).
       allow read: if request.auth != null
         && (resource == null || request.auth.uid in resource.data.participantIds);
-      allow update: if request.auth != null && request.auth.uid in resource.data.participantIds;
-      // Karsi taraf beni engellemisse yeni bir sohbet baslatamam.
-      allow create: if request.auth != null && request.auth.uid in request.resource.data.participantIds
-        && !exists(/databases/$(database)/documents/users/$(
-             request.resource.data.buyerId == request.auth.uid
-               ? request.resource.data.sellerId
-               : request.resource.data.buyerId
-           )/blockedUsers/$(request.auth.uid));
+      // Sadece mesajlasma sirasinda dogal olarak degisen alanlara izin
+      // verilir - participantIds/buyerId/sellerId gibi kimlik alanlarina
+      // dokunulamaz, aksi halde bir katilimci sohbeti sonradan baskasina
+      // (ornegin kendine) "devredebilir" ya da ucuncu bir kisiyi ekleyip
+      // ozel mesajlari okuyabilirdi (bkz. src/services/chat.ts - touchConversation/
+      // markConversationRead/deleteConversationForUser hicbiri bu alanlara dokunmuyor).
+      allow update: if request.auth != null && request.auth.uid in resource.data.participantIds
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+             'participantIds', 'buyerId', 'sellerId', 'listingId',
+             'buyerName', 'buyerPhotoURL', 'sellerName', 'sellerPhotoURL'
+           ]);
+      // Sohbet dokuman ID'si "{listingId}_{buyerId}" seklinde tahmin
+      // edilebilir oldugu icin (bkz. src/services/chat.ts conversationDocId),
+      // eskiden sadece "auth.uid participantIds icinde" kontrol ediliyordu -
+      // bu, saldirganin kurbanin daha sonra baslatacagi bir sohbetin ID'sini
+      // onceden tahmin edip participantIds:[kurban, saldirgan] ve
+      // sellerId/sellerName'i gercek saticiymis gibi gostererek onceden
+      // olusturmasina izin veriyordu (sohbet "zehirleme"/kimlik sahteciligi).
+      // Simdi: sadece gercek alici olusturabilir, sellerId gercek ilanin
+      // sahibiyle birebir eslesmeli, participantIds tam olarak [buyerId,
+      // sellerId] olmali, ve dokuman ID'si beklenen formatla eslesmeli.
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.buyerId
+        && request.resource.data.sellerId ==
+             get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.sellerId
+        && request.resource.data.participantIds ==
+             [request.resource.data.buyerId, request.resource.data.sellerId]
+        && conversationId == request.resource.data.listingId + '_' + request.resource.data.buyerId
+        && !exists(/databases/$(database)/documents/users/$(request.resource.data.sellerId)
+             /blockedUsers/$(request.auth.uid));
 
       match /messages/{messageId} {
         allow read: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         // Karsi taraf beni engellemisse yeni mesaj gonderemem (eski mesajlar
-        // okunabilir kalir, sadece yeni mesaj engellenir).
+        // okunabilir kalir, sadece yeni mesaj engellenir). Mesaj icerigi de
+        // src/services/chat.ts'teki sendMessage/sendOffer ile birebir
+        // eslesecek sekilde sinirlanir - aksi halde biri dogrudan yazip
+        // (ornegin) negatif ya da anlamsiz buyuklukte bir teklif tutari
+        // uydurabilirdi.
         allow create: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
           && request.resource.data.senderId == request.auth.uid
@@ -125,13 +163,27 @@ service cloud.firestore {
                get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId == request.auth.uid
                  ? get(/databases/$(database)/documents/conversations/$(conversationId)).data.sellerId
                  : get(/databases/$(database)/documents/conversations/$(conversationId)).data.buyerId
-             )/blockedUsers/$(request.auth.uid));
+             )/blockedUsers/$(request.auth.uid))
+          && (
+               (request.resource.data.type == 'text'
+                 && request.resource.data.offerAmount == null
+                 && request.resource.data.offerStatus == null) ||
+               (request.resource.data.type == 'offer'
+                 && request.resource.data.offerStatus == 'pending'
+                 && request.resource.data.offerAmount is number
+                 && request.resource.data.offerAmount > 0
+                 && request.resource.data.offerAmount <= 100000000)
+             );
         // Bir teklife sadece teklifi alan taraf (gonderen degil) cevap
-        // verebilir, ve sadece offerStatus alanini degistirebilir.
+        // verebilir, ve sadece offerStatus alanini gecerli degerlerden
+        // birine degistirebilir (bkz. src/services/chat.ts respondToOffer/
+        // sendCounterOffer - baska hicbir cagri offerStatus yazmiyor).
         allow update: if request.auth != null
           && request.auth.uid != resource.data.senderId
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offerStatus']);
+          && resource.data.type == 'offer'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offerStatus'])
+          && request.resource.data.offerStatus in ['accepted', 'declined', 'countered'];
       }
     }
 
