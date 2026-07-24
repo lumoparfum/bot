@@ -114,7 +114,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const handleInvite = () => {
     Share.share({
-      message: 'Stop82\'de ikinci el eşyalarını al-sat! Uygulamayı dene: https://stop82.app',
+      message: 'Stop82\'de ikinci el eşyalarını al-sat! Uygulamayı dene: https://stop82.com',
     }).catch(() => {});
   };
 
