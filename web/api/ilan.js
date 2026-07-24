@@ -27,7 +27,40 @@ function formatPrice(price) {
   return `${n.toLocaleString('tr-TR')} ₺`;
 }
 
-function pageShell({ title, description, image, url, bodyHtml }) {
+// WhatsApp/Facebook'un onizleme kirtayicisi og:image:width/height verilmezse
+// (ozellikle dikey/portre fotograflarda - urun fotograflari genelde boyle)
+// bazen resmi hic gostermiyor, sessizce metne dusuyor. Tam resim
+// kutuphanesi eklemek yerine JPEG/PNG boyutunu dosyanin kendi
+// baslik baytlarindan okuyoruz - kucuk ve bagimliliksiz.
+function readImageDimensions(buffer) {
+  try {
+    if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+      // JPEG: SOF (Start Of Frame) marker'ini tara
+      let offset = 2;
+      while (offset < buffer.length) {
+        if (buffer[offset] !== 0xff) break;
+        const marker = buffer[offset + 1];
+        if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+          const height = buffer.readUInt16BE(offset + 5);
+          const width = buffer.readUInt16BE(offset + 7);
+          return { width, height, type: 'image/jpeg' };
+        }
+        const segmentLength = buffer.readUInt16BE(offset + 2);
+        offset += 2 + segmentLength;
+      }
+    } else if (buffer[0] === 0x89 && buffer[1] === 0x50) {
+      // PNG: IHDR her zaman sabit ofsette
+      const width = buffer.readUInt32BE(16);
+      const height = buffer.readUInt32BE(20);
+      return { width, height, type: 'image/png' };
+    }
+  } catch {
+    // sessizce yut - asagida width/height olmadan devam eder
+  }
+  return null;
+}
+
+function pageShell({ title, description, image, imageMeta, url, bodyHtml }) {
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -41,6 +74,10 @@ function pageShell({ title, description, image, url, bodyHtml }) {
   <meta property="og:title" content="${escapeHtml(title)}" />
   <meta property="og:description" content="${escapeHtml(description)}" />
   <meta property="og:image" content="${escapeHtml(image)}" />
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}" />
+  ${imageMeta ? `<meta property="og:image:width" content="${imageMeta.width}" />
+  <meta property="og:image:height" content="${imageMeta.height}" />
+  <meta property="og:image:type" content="${imageMeta.type}" />` : ''}
   <meta property="og:url" content="${escapeHtml(url)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escapeHtml(title)}" />
@@ -130,6 +167,15 @@ module.exports = async function handler(req, res) {
   const description = listing.description
     ? listing.description.slice(0, 180)
     : `${listing.locationLabel || ''} konumunda, Stop82'de ücretsiz ilan.`;
+
+  let imageMeta = null;
+  try {
+    const imgRes = await fetch(image);
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    imageMeta = readImageDimensions(buffer);
+  } catch {
+    imageMeta = null;
+  }
   const appLink = `stop82://ilan/${encodeURIComponent(id)}`;
 
   const bodyHtml = `
@@ -152,8 +198,9 @@ module.exports = async function handler(req, res) {
       title,
       description,
       image,
+      imageMeta,
       url: canonicalUrl,
       bodyHtml,
     })
   );
-}
+};

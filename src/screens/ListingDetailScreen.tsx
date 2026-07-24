@@ -235,10 +235,13 @@ export default function ListingDetailScreen({ route, navigation }: Props) {
     // kendisi tiklaninca DOGRUDAN uygulamayi acmasi (Universal Links) henuz
     // yok - o native bir build gerektiriyor, su an icin bir ek tiklama ile
     // (o sayfadaki buton) uygulamaya geciliyor.
+    // NOT: "message" icine linki gomdukten sonra AYRICA "url" alanini da
+    // vermek, iOS'ta bazi paylasim hedeflerinde (WhatsApp gibi) linkin iki
+    // kez gorunmesine yol aciyordu - Share API ikisini birlestirmek yerine
+    // ayri ayri ekliyor. Tek yerde (message icinde) tutuluyor.
     const url = `https://stop82.com/ilan/${listing.id}`;
     Share.share({
       message: `${listing.title} - ${formatPrice(listing.price)}\n${url}`,
-      url,
     }).catch(() => {});
   };
 
